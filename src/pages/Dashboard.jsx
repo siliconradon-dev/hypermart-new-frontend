@@ -1,7 +1,6 @@
 import './Dashboard.css';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
-import dashBg from '../assets/dash-bg.png';
 
 const panelItems = [
   {
@@ -127,7 +126,7 @@ function Dashboard({
       <main
         className="flex items-center justify-center flex-grow py-8"
         style={{
-          backgroundImage: `url(${dashBg})`,
+          backgroundImage: "url('images/dash-bg.png')",
           backgroundRepeat: 'no-repeat',
           backgroundSize: 'cover',
           backgroundPosition: 'center',
