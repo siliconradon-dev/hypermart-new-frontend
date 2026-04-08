@@ -90,7 +90,7 @@ const panelItems = [
   {
     label: 'Stock Report',
     href: ' /reports/stockReports',
-    icon: ' /images/reports/ItemStockReport.png',
+    icon: ' /images/main-panel/btn-icons/ItemStockReport.png',
     alt: 'Stock Report',
   },
 ];
