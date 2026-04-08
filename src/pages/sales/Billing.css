@@ -1,0 +1,84 @@
+.billing-page {
+  width: 100%;
+}
+
+.billing-payment-card {
+  background: #eef3ff;
+  border: 1px solid #b7c8f8;
+}
+
+.billing-payment-input {
+  background: #f3f4f6;
+  border: 1px solid #8fb4ff;
+}
+
+.billing-invoice-card {
+  background: #eef0fb;
+  border: 1px solid #c3cdf6;
+}
+
+.billing-payment-add-row {
+  background: #16a34a;
+  color: #fff;
+}
+
+.billing-payment-add-row:hover {
+  background: #15803d;
+}
+
+.billing-source-row {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.billing-source-selector {
+  background: #f3f4f6;
+}
+
+.billing-source-dropdown {
+  border: 1px solid #d1d5db;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+}
+
+.billing-source-search {
+  border: 1px solid #d1d5db;
+}
+
+.billing-source-option:hover {
+  background: #f3f4f6;
+}
+
+.billing-source-amount {
+  background: #f3f4f6;
+}
+
+.billing-source-remove {
+  background: #ef4444;
+  color: #fff;
+}
+
+.billing-source-remove:hover {
+  background: #dc2626;
+}
+
+.billing-split-total {
+  background: #f3f4f6;
+}
+
+.billing-summary-card {
+  background: #f9fafb;
+}
+
+.billing-additional-clear {
+  background: #fee2e2;
+  border: 1px solid #fecaca;
+  color: #ef4444;
+}
+
+.billing-additional-input {
+  background: #f3f4f6;
+  border: 1px solid #d1d5db;
+  color: #6b7280;
+}

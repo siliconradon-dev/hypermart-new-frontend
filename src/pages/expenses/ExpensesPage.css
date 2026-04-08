@@ -1,0 +1,39 @@
+.expenses-page {
+  min-height: 100dvh;
+  background: #f6f9ff;
+}
+
+.module-content {
+  padding: 1rem 3rem 2rem;
+}
+
+.module-breadcrumb {
+  display: flex;
+  gap: 0.5rem;
+  color: #4b5563;
+  font-size: 0.875rem;
+  margin-bottom: 1rem;
+}
+
+.module-sep {
+  color: #9ca3af;
+}
+
+.module-card {
+  background: #ffffff;
+  border: 1px solid #d1d5db;
+  border-radius: 0.75rem;
+  padding: 1.25rem;
+}
+
+.module-card h1 {
+  margin: 0 0 0.5rem;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #111827;
+}
+
+.module-card p {
+  margin: 0;
+  color: #374151;
+}

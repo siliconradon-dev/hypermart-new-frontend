@@ -1,0 +1,9 @@
+.dashbord-page,
+.dashbord-page *:not(i):not(.fa):not(.fas):not(.far):not(.fal):not(.fab) {
+  font-family: Helvetica, Arial, sans-serif;
+}
+
+.dashbord-page {
+  font-size: 16px;
+  line-height: 1.5;
+}
