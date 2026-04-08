@@ -130,6 +130,10 @@ const ItemListPage = () => {
               <button className="hidden px-2 py-3 text-white bg-[#3c8c2c] rounded-lg max-sm:px-2 max-sm:py-1">CSV</button>
               <button className="hidden px-2 py-1.5 text-white bg-[#3c8c2c] rounded-lg max-sm:px-2 max-sm:py-1">Excel</button>
               <button className="hidden px-2 py-1.5 text-white bg-[#3c8c2c] rounded-lg max-sm:px-2 max-sm:py-1">PDF</button>
+              {/* Category List navigation button */}
+              <a href="/item/category-list" className="px-2 py-3 text-white bg-[#3c8c2c] rounded-lg max-sm:px-2 max-sm:py-1 flex items-center" style={{ textDecoration: 'none' }}>
+                Category List
+              </a>
               <button
                 type="button"
                 className="px-2 py-3 text-white bg-[#3c8c2c] rounded-lg max-sm:px-2 max-sm:py-1 focus:outline-none relative"

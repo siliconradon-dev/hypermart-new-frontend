@@ -7,6 +7,8 @@ import ItemPage from './pages/item/ItemPage';
 import AddItemPage from './pages/item/add_item/AddItemPage';
 import AddCategoryPage from './pages/item/add_category/AddCategoryPage';
 import ItemListPage from './pages/item/item_list/ItemListPage';
+import CategoryListPage from './pages/item/category/CategoryListPage';
+import ImportItem from './pages/item/import_item/ImportItem';
 import SalesPage from './pages/sales/SalesPage';
 import UsersPage from './pages/users/UsersPage';
 import CustomersPage from './pages/customers/CustomersPage';
@@ -15,6 +17,7 @@ import ExpensesPage from './pages/expenses/ExpensesPage';
 import FinancePage from './pages/finance/FinancePage';
 import ReportsPage from './pages/reports/ReportsPage';
 import SettingsPage from './pages/settings/SettingsPage';
+
 
 function App() {
   const navigate = useNavigate();
@@ -53,7 +56,9 @@ function App() {
         <Route path="/item/add_item" element={<AddItemPage />} />
         <Route path="/item/add_category" element={<AddCategoryPage />} />
         <Route path="/item/item_list" element={<ItemListPage />} />
-
+        <Route path="/item/category_list" element={<CategoryListPage />} />
+        <Route path="/item/importItem" element={<ImportItem />} />
+        <Route path="/item/import_item" element={<Navigate to="/item/importItem" replace />} />
         <Route path="/users/users" element={<UsersPage onBackToMain={goToMainPanel} />} />
         <Route path="/customers/customers" element={<CustomersPage onBackToMain={goToMainPanel} />} />
         <Route path="/suppliers/suppliers" element={<SuppliersPage onBackToMain={goToMainPanel} />} />
