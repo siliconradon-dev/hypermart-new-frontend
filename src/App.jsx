@@ -15,6 +15,7 @@ import EditItemPage from './pages/item/item_list/EditItemPage';
 import EditCategory from './pages/item/category/EditCategory';
 import ImportItem from './pages/item/import_item/ImportItem';
 import GenerateQRCode from './pages/item/GenerateQRCode/GenerateQRCode';
+import ExportPanel from './pages/item/ExportPanel/ExportPanel';
 
 // Sales Management
 import SalesPage from './pages/sales/SalesPage';
@@ -54,6 +55,7 @@ function App() {
               onOpenDashbord={() => navigate('/dashboard/dashboard')}
               onOpenBilling={() => navigate('/sales/billing')}
               onOpenItem={() => navigate('/item')}
+              onExportPanel={() => navigate('/item/export_panel')}
               onOpenSales={() => navigate('/sales/sales')}
               onOpenUsers={() => navigate('/users/users')}
               onOpenCustomers={() => navigate('/customers/customers')}
@@ -81,6 +83,7 @@ function App() {
         <Route path="/item/importItem" element={<ImportItem />} />
         <Route path="/item/generate_qr_code" element={<GenerateQRCode />} />
         <Route path="/item/genarateCode" element={<Navigate to="/item/generate_qr_code" replace />} />
+        <Route path="/item/export_panel" element={<ExportPanel />} />
         <Route path="/users/users" element={<UsersPage onBackToMain={goToMainPanel} />} />
         <Route path="/customers/customers" element={<CustomersPage onBackToMain={goToMainPanel} />} />
         <Route path="/suppliers/suppliers" element={<SuppliersPage onBackToMain={goToMainPanel} />} />

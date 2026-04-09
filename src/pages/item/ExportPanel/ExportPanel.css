@@ -1,0 +1,79 @@
+/* ExportPanel styles */
+.export-panel-container {
+  width: 100%;
+  padding: 2rem 3rem;
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+  align-items: center;
+}
+.export-panel-content {
+  width: 100%;
+  background: #fff;
+  border-radius: 0.75rem;
+  box-shadow: 0 2px 8px #0001;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+}
+.export-panel-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+.export-panel-controls label {
+  font-weight: 500;
+  margin-bottom: 0.25rem;
+  color: #222;
+}
+.export-panel-controls select,
+.export-panel-controls button,
+.export-panel-controls a {
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  font-size: 1rem;
+  border: 1px solid #ccc;
+  background: #f9f9f9;
+  color: #222;
+  transition: background 0.2s;
+}
+.export-panel-controls button.export-selected {
+  background: #16a34a;
+  color: #fff;
+  border: none;
+}
+.export-panel-controls a.refresh-btn {
+  background: #6b7280;
+  color: #fff;
+  border: none;
+}
+.export-panel-table-container {
+  overflow-x: auto;
+  max-height: 500px;
+}
+.export-panel-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #fff;
+}
+.export-panel-table th,
+.export-panel-table td {
+  padding: 0.75rem 1rem;
+  border: 1px solid #e5e7eb;
+  text-align: left;
+  font-size: 0.95rem;
+}
+.export-panel-table th {
+  background: #f3f4f6;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: #6b7280;
+}
+.export-panel-table td {
+  color: #374151;
+}
+.export-panel-table .center {
+  text-align: center;
+}

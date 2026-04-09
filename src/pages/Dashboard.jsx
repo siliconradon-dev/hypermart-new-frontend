@@ -99,6 +99,7 @@ function Dashboard({
   onOpenDashbord,
   onOpenBilling,
   onOpenItem,
+  onExportPanel,
   onOpenSales,
   onOpenUsers,
   onOpenCustomers,
@@ -118,6 +119,7 @@ function Dashboard({
     'Finance Management': onOpenFinance,
     Reports: onOpenReports,
     Settings: onOpenSettings,
+    'Export Items': onExportPanel,
   };
 
   return (
