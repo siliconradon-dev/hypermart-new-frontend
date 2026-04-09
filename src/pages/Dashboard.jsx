@@ -30,8 +30,8 @@ const panelItems = [
   },
   {
     label: 'Stock',
-    href: ' /stock/stock',
-    icon: ' /images/main-panel/btn-icons/stock.svg',
+    href: '/stock/stock',
+    icon: '/images/main-panel/btn-icons/stock.svg',
     alt: 'Stock',
   },
   {
@@ -89,7 +89,7 @@ const panelItems = [
   },
   {
     label: 'Stock Report',
-    href: ' /reports/stockReports',
+    href: ' /reports/stock',
     icon: ' /images/main-panel/btn-icons/ItemStockReport.png',
     alt: 'Stock Report',
   },
@@ -100,6 +100,7 @@ function Dashboard({
   onOpenBilling,
   onOpenItem,
   onExportPanel,
+  onStock,
   onOpenSales,
   onOpenUsers,
   onOpenCustomers,
@@ -111,6 +112,7 @@ function Dashboard({
 }) {
   const pageOpeners = {
     Items: onOpenItem,
+    Stock: onStock,
     Sales: onOpenSales,
     Users: onOpenUsers,
     Customer: onOpenCustomers,

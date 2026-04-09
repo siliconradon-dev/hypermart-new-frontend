@@ -1,0 +1,63 @@
+/* Stock page styles */
+.stock-container {
+  width: 100%;
+  padding: 2rem 3rem;
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+  align-items: center;
+}
+.stock-content {
+  width: 100%;
+  background: #fff;
+  border-radius: 0.75rem;
+  box-shadow: 0 2px 8px #0001;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+}
+.stock-table-container {
+  overflow-x: auto;
+  max-height: 500px;
+}
+.stock-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #fff;
+}
+.stock-table th,
+.stock-table td {
+  padding: 0.75rem 1rem;
+  border: 1px solid #e5e7eb;
+  text-align: left;
+  font-size: 0.95rem;
+}
+.stock-table th {
+  background: #f3f4f6;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: #6b7280;
+}
+.stock-table td {
+  color: #374151;
+}
+.stock-pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 1.5rem;
+}
+.stock-pagination button {
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  border: 1px solid #ccc;
+  background: #f9f9f9;
+  color: #222;
+  font-size: 1rem;
+  cursor: pointer;
+}
+.stock-pagination .active {
+  background: #029ED9;
+  color: #fff;
+  border: none;
+}

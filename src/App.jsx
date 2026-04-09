@@ -17,8 +17,11 @@ import ImportItem from './pages/item/import_item/ImportItem';
 import GenerateQRCode from './pages/item/GenerateQRCode/GenerateQRCode';
 import ExportPanel from './pages/item/ExportPanel/ExportPanel';
 
+// Stock Management
+import Stock from './pages/stock/Stock';
 // Sales Management
 import SalesPage from './pages/sales/SalesPage';
+
 
 // User Management
 import UsersPage from './pages/users/UsersPage';
@@ -56,6 +59,7 @@ function App() {
               onOpenBilling={() => navigate('/sales/billing')}
               onOpenItem={() => navigate('/item')}
               onExportPanel={() => navigate('/item/export_panel')}
+              onStock={() => navigate('/stock/stock')}
               onOpenSales={() => navigate('/sales/sales')}
               onOpenUsers={() => navigate('/users/users')}
               onOpenCustomers={() => navigate('/customers/customers')}
@@ -67,12 +71,13 @@ function App() {
             />
           }
         />
-
+          {/* Dashboard */}
         <Route path="/dashboard/dashboard" element={<DashbordDashboard onBackToMain={goToMainPanel} />} />
-
+          {/* Sales */}
         <Route path="/sales/billing" element={<Billing onBackToMain={goToMainPanel} />} />
         <Route path="/sales/sales" element={<SalesPage onBackToMain={goToMainPanel} />} />
 
+          {/* Item Management */}
         <Route path="/item" element={<ItemPage onBackToMain={goToMainPanel} />} />
         <Route path="/item/add_item" element={<AddItemPage />} />
         <Route path="/item/add_category" element={<AddCategoryPage />} />
@@ -84,6 +89,11 @@ function App() {
         <Route path="/item/generate_qr_code" element={<GenerateQRCode />} />
         <Route path="/item/genarateCode" element={<Navigate to="/item/generate_qr_code" replace />} />
         <Route path="/item/export_panel" element={<ExportPanel />} />
+
+          {/* Stock Management */}
+        <Route path="/stock/stock" element={<Stock onBackToMain={goToMainPanel} />} />
+
+
         <Route path="/users/users" element={<UsersPage onBackToMain={goToMainPanel} />} />
         <Route path="/customers/customers" element={<CustomersPage onBackToMain={goToMainPanel} />} />
         <Route path="/suppliers/suppliers" element={<SuppliersPage onBackToMain={goToMainPanel} />} />
