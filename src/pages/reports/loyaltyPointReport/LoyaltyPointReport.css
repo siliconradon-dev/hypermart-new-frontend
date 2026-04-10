@@ -1,0 +1,57 @@
+.loyalty-point-report-page,
+.loyalty-point-report-page * {
+  font-family: Helvetica, Arial, sans-serif;
+}
+
+.loyalty-point-report-page i,
+.loyalty-point-report-page .fas,
+.loyalty-point-report-page .far,
+.loyalty-point-report-page .fal,
+.loyalty-point-report-page .fab,
+.loyalty-point-report-page .svg-inline--fa {
+  font-family: "Font Awesome 5 Free" !important;
+}
+
+.loyalty-point-report-page .loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(255, 255, 255, 0.9);
+  display: none;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+}
+
+.loyalty-point-report-page .loading-overlay.show {
+  display: flex;
+}
+
+.loyalty-point-report-page .spinner {
+  width: 50px;
+  height: 50px;
+  border: 5px solid #ccc;
+  border-top-color: #3498db;
+  border-radius: 50%;
+  animation: loyalty-point-report-spin 1s linear infinite;
+}
+
+@keyframes loyalty-point-report-spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.loyalty-point-report-page #custom-alert {
+  display: none;
+}
+
+.loyalty-point-report-page #custom-alert.show {
+  display: flex;
+}

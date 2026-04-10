@@ -1,0 +1,53 @@
+.transactions-page,
+.transactions-page * {
+  font-family: Helvetica, Arial, sans-serif;
+}
+
+.transactions-page i,
+.transactions-page .fas,
+.transactions-page .far,
+.transactions-page .fal,
+.transactions-page .fab,
+.transactions-page .svg-inline--fa {
+  font-family: "Font Awesome 5 Free" !important;
+}
+
+.loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(255, 255, 255, 0.9);
+  display: none;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+}
+
+.loading-overlay.show {
+  display: flex;
+}
+
+.spinner {
+  width: 50px;
+  height: 50px;
+  border: 5px solid #ccc;
+  border-top-color: #3498db;
+  border-radius: 50%;
+  animation: transactions-spin 1s linear infinite;
+}
+
+@keyframes transactions-spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.transactions-page .custom-select select.hidden {
+  display: none;
+}

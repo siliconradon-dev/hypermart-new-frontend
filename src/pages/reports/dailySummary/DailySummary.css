@@ -1,0 +1,57 @@
+.daily-summary-page,
+.daily-summary-page * {
+  font-family: Helvetica, Arial, sans-serif;
+}
+
+.daily-summary-page i,
+.daily-summary-page .fas,
+.daily-summary-page .far,
+.daily-summary-page .fal,
+.daily-summary-page .fab,
+.daily-summary-page .svg-inline--fa {
+  font-family: "Font Awesome 5 Free" !important;
+}
+
+.daily-summary-page .loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(255, 255, 255, 0.9);
+  display: none;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+}
+
+.daily-summary-page .loading-overlay.show {
+  display: flex;
+}
+
+.daily-summary-page .spinner {
+  width: 50px;
+  height: 50px;
+  border: 5px solid #ccc;
+  border-top-color: #3498db;
+  border-radius: 50%;
+  animation: daily-summary-spin 1s linear infinite;
+}
+
+@keyframes daily-summary-spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.daily-summary-page #custom-alert {
+  display: none;
+}
+
+.daily-summary-page #custom-alert.show {
+  display: flex;
+}
