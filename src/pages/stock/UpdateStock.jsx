@@ -1,43 +1,18 @@
 import React from 'react';
+import Layout from '../../components/Layout';
 
 const UpdateStock = () => {
   return (
-    <div className="min-h-dvh max-lg:h-fit flex flex-col h-fit bg-white">
-      {/* Navigation Bar */}
-      <div className="nav bg-[#3c8c2c] w-full h-[10%] max-lg:h-[17dvh] py-6 flex justify-between items-center max-md:justify-center max-md:flex-col md:px-14 lg:px-0 relative">
-        <span className="flex items-center gap-3 ml-20 max-lg:ml-0 max-sm:scale-75">
-          <button className="rounded-full w-[50px] aspect-square bg-white flex justify-center items-center hover:scale-90 transition-all">
-            <i className="text-xl text-[#000000] fas fa-arrow-left"></i>
-          </button>
-          <button className="p-2 text-[#000000] rounded-lg bg-white flex gap-3 justify-center items-center hover:scale-90 transition-all">
-            <i className="text-xl text-[#000000] fas fa-city"></i>
-            Go to Main Panel
-          </button>
-          <a href="#" className="p-2 text-[#000000] rounded-lg bg-white flex gap-3 justify-center items-center hover:scale-90 transition-all">
-            POS
-          </a>
-        </span>
-        <div className="absolute left-1/2 transform -translate-x-1/2 hidden sm:block">
-          <img src="https://hypermart-new.onlinesytems.com/Company Logo/1774375149_1771770442_Screenshot 2026-02-22 195640.png" alt="Logo" className="h-14 max-sm:h-8 bg-white p-1 rounded-full" />
-        </div>
-        <span className="flex items-center gap-3 mr-20 max-lg:mr-0 max-sm:scale-75">
-          <div className="flex flex-col items-end text-right">
-            <h3 className="text-2xl max-md:text-sm text-[#ffffff]">Good Morning!</h3>
-            <h3 className="text-sm text-[#ffffff]">Welcome HYPERMART</h3>
+    <Layout onBackToMain={() => (window.location.href = '/dashboard')}>
+      <div className="flex flex-col flex-grow bg-white">
+        {/* Loading Overlay (UI only) */}
+        <div className="loading-overlay" style={{ display: 'none' }}>
+          <div className="text-center">
+            <div className="spinner"></div>
           </div>
-          <button className="rounded-full w-[50px] aspect-square bg-white flex justify-center items-center hover:scale-90 transition-all">
-            <i className="text-xl font-bold text-[#000000] fas fa-sign-out-alt"></i>
-          </button>
-        </span>
-      </div>
-      {/* Loading Overlay (UI only) */}
-      <div className="loading-overlay" style={{ display: 'none' }}>
-        <div className="text-center">
-          <div className="spinner"></div>
         </div>
-      </div>
-      {/* Breadcrumbs */}
-      <div className="px-6 lg:px-12 py-5 max-sm:px-6">
+        {/* Breadcrumbs */}
+        <div className="px-6 lg:px-12 py-5 max-sm:px-6">
         <nav className="flex" aria-label="Breadcrumb">
           <ol className="inline-flex items-center space-x-1 md:space-x-2 rtl:space-x-reverse">
             <li className="inline-flex items-center">
@@ -67,8 +42,8 @@ const UpdateStock = () => {
           </ol>
         </nav>
       </div>
-      {/* Main Form Panel */}
-      <div className="px-6 lg:px-12">
+        {/* Main Form Panel */}
+        <div className="px-6 lg:px-12">
         <div className="flex flex-col flex-grow h-full p-6 border-2 rounded-lg">
           <form className="w-full">
             <div className="grid gap-6 mb-6 md:grid-cols-2">
@@ -165,8 +140,8 @@ const UpdateStock = () => {
           </form>
         </div>
       </div>
-      {/* Table Section */}
-      <div className="flex flex-col flex-grow px-12 py-5 overflow-y-auto bg-white max-sm:px-6 max-lg:min-h-full">
+        {/* Table Section */}
+        <div className="flex flex-col flex-grow px-12 py-5 overflow-y-auto bg-white max-sm:px-6 max-lg:min-h-full">
         <span></span>
         <div className="relative overflow-x-auto">
           <table className="w-full text-sm text-left text-gray-500 rtl:text-right">
@@ -224,12 +199,9 @@ const UpdateStock = () => {
             </tbody>
           </table>
         </div>
+        </div>
       </div>
-      {/* Footer */}
-      <footer className="bg-[#3c8c2c] py-4 text-center text-[#ffffff]">
-        <p>2026 © All Rights Reserved | Hypermart | Designed and Developed by Silicon Radon Networks (Pvt) Ltd</p>
-      </footer>
-    </div>
+    </Layout>
   );
 };
 
