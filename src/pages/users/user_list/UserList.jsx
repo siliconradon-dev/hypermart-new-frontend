@@ -2,6 +2,7 @@
 import React, { useState, useRef } from 'react';
 import Layout from '../../../components/Layout';
 import './UserList.css';
+import { useNavigate } from 'react-router-dom'; 
 
 import * as XLSX from 'xlsx';
 
@@ -34,6 +35,7 @@ const staticUsers = [
 ];
 
 const UserList = () => {
+  const navigate = useNavigate();
 
   const [search, setSearch] = useState('');
   const [entries, setEntries] = useState(30);
@@ -47,9 +49,12 @@ const UserList = () => {
     user.name.toLowerCase().includes(search.toLowerCase())
   ).slice(0, entries);
 
-  const handleEdit = (id) => {
-    alert('Edit user ' + id);
+  const handleEdit = (e) => {
+    e.preventDefault();
+    navigate(`/users/edit_users`);
   };
+
+  
 
   const handleStatusToggle = (id) => {
     setUsers(prev => prev.map(user =>
@@ -244,7 +249,7 @@ const UserList = () => {
                     )}
                     {visibleCols.includes('manage') && (
                       <td className="px-4 py-2 flex gap-2">
-                        <button className="p-2 border-2 rounded-lg" onClick={() => handleEdit(user.id)}>Edit</button>
+                        <button className="p-2 border-2 rounded-lg" onClick={handleEdit} >Edit</button>
                         <button className={`p-2 text-white border-2 rounded-lg ${user.status === 'Active' ? 'bg-green-600' : 'bg-gray-400'}`} onClick={() => handleStatusToggle(user.id)}>
                           {user.status === 'Active' ? 'Active' : 'Inactive'}
                         </button>
