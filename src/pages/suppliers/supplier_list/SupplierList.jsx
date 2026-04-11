@@ -4,6 +4,7 @@ import './SupplierList.css';
 import * as XLSX from 'xlsx';
 import { jsPDF } from 'jspdf';
 import 'jspdf-autotable';
+import { useNavigate } from 'react-router-dom';
 
 const supplierRows = [
   {
@@ -32,6 +33,7 @@ const columnDefinitions = [
 ];
 
 const SupplierList = () => {
+  const navigate = useNavigate();
   const tableRef = useRef(null);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -122,8 +124,9 @@ const SupplierList = () => {
     doc.save('supplier.pdf');
   };
 
-  const handleEditSupplier = (supplierId) => {
-    window.location.href = `/suppliers/updateSupplier/${supplierId}`;
+  const handleEditSupplier = (e) => {
+    e.preventDefault();
+    navigate(`/suppliers/edit_supplier`);
   };
 
   const handleToggleStatus = (supplierId) => {
@@ -279,7 +282,7 @@ const SupplierList = () => {
                       <td className="hidden px-4 py-2">{row.statusId}</td>
                       <td className="hidden px-4 py-2">{row.cityName}</td>
                       <td className={`px-4 py-2 ${visibleColumns.manage ? '' : 'hidden'}`}>
-                        <button type="button" className="p-2 border border-gray-300 rounded-md" onClick={() => handleEditSupplier(row.id)}>Edit</button>
+                        <button type="button" className="p-2 border border-gray-300 rounded-md" onClick={ handleEditSupplier}>Edit</button>
                         <button
                           id={`status-button-${row.id}`}
                           type="button"

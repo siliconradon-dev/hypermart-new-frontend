@@ -142,7 +142,7 @@ const SupplierSInvoice = ({ onBackToMain }) => {
             <div className="flex items-center justify-between mb-6 invoice-toolbar">
               <h1 className="text-2xl font-bold text-gray-900">Supplier Invoices</h1>
               <div className="flex gap-3 invoice-toolbar-actions">
-                <a href="/suppliers/transaction-log" className="px-4 py-2 text-white rounded-lg bg-indigo-600 hover:opacity-90 flex items-center gap-2">
+                <a href="/suppliers/transaction_log" className="px-4 py-2 text-white rounded-lg bg-indigo-600 hover:opacity-90 flex items-center gap-2">
                   <i className="fas fa-list-alt" />
                   Transaction Log
                 </a>
@@ -150,11 +150,11 @@ const SupplierSInvoice = ({ onBackToMain }) => {
                   <i className="fas fa-money-check-alt" />
                   Cheques List
                 </a>
-                <a href="/suppliers/invoices/report" target="_blank" rel="noreferrer" className="px-4 py-2 text-white rounded-lg bg-purple-600 hover:opacity-90 flex items-center gap-2">
+                <a href="/suppliers/invoice_report" target="_blank" rel="noreferrer" className="px-4 py-2 text-white rounded-lg bg-purple-600 hover:opacity-90 flex items-center gap-2">
                   <i className="fas fa-file-pdf" />
                   Report (PDF)
                 </a>
-                <a href="/suppliers/invoices/create" className="px-4 py-2 text-white rounded-lg bg-[#3c8c2c] hover:opacity-90 flex items-center gap-2">
+                <a href="/suppliers/add_invoice" className="px-4 py-2 text-white rounded-lg bg-[#3c8c2c] hover:opacity-90 flex items-center gap-2">
                   <i className="fas fa-plus" />
                   Add New Invoice
                 </a>

@@ -54,8 +54,8 @@ import EditCustomer from './pages/customers/edit_customer/EditCustomer';
 // import Transactions from './pages/customers/transactions/Transactions';
 // import customerTransctions from './pages/customers/transactions/Transactions';
 import CustomerTransactionHistory from './pages/customers/transaction_history/TransactionHistory';
-// import transactionLog from './pages/customers/transaction-log/TransactionLog ';
 import BalanceTransactionLog  from './pages/customers/balance_transaction_log/BalanceTransactionLog'; 
+import TransactionLog from './pages/customers/transaction-log/TransactionLog';
 
 // Cheques 
 import Cheques from './pages/cheques/Cheques';
@@ -64,12 +64,15 @@ import CreateCheques from './pages/cheques/create/CreateCheques';
 // Supplier Management
 import SuppliersPage from './pages/suppliers/SuppliersPage';
 import AddSupplier from './pages/suppliers/add_supplier/AddSupplier';
+import EditSupplier from './pages/suppliers/edit_supplier/EditSupplier';
 import SupplierList from './pages/suppliers/supplier_list/SupplierList';
 import SupplierInvoice from './pages/suppliers/supplier_invoice/SupplierSInvoice';
 import SupplierCheque from './pages/suppliers/supplier_cheque/SupplierCheque';
 import TransactionHistory from './pages/suppliers/transactions/TransactionHistory';
-
-
+import SupplierTransactionLog from './pages/suppliers/transaction_log/TransactionLog';
+import ChequeList from './pages/suppliers/cheques/ChequeList';
+import AddNewInvoice from './pages/suppliers/invoice/AddNewInvoice';
+import InvoiceReport from './pages/suppliers/invoice/InvoiceReport';
 // Expenses Management
 import ExpensesPage from './pages/expenses/ExpensesPage';
 import ExpensesList from './pages/expenses/expensesList/ExpensesList';
@@ -103,7 +106,6 @@ import SiteSettings from './pages/settings/siteSettings/SiteSettings';
 import ChangePassword from './pages/settings/changePassword/ChangePassword';
 import ChangeSite from './pages/settings/changeSite/ChangeSite';
 import PosMachines from './pages/admin/pos_machines/PosMachines';
-import TransactionLog from './pages/customers/transaction-log/TransactionLog';
 
 
 
@@ -205,7 +207,11 @@ function App() {
         <Route path="/suppliers/supplier_invoice" element={<SupplierInvoice onBackToMain={goToMainPanel} />} />
         <Route path="/suppliers/supplier_cheque" element={<SupplierCheque onBackToMain={goToMainPanel} />} />
         <Route path="/suppliers/transactions" element={<TransactionHistory onBackToMain={goToMainPanel} />} />
-      
+        <Route path="/suppliers/edit_supplier" element={<EditSupplier onBackToMain={goToMainPanel} />} />
+        <Route path="/suppliers/transaction_log" element={<SupplierTransactionLog onBackToMain={goToMainPanel} />} />
+        <Route path="/suppliers/cheques" element={<ChequeList onBackToMain={goToMainPanel} />} />
+        <Route path="/suppliers/add_invoice" element={<AddNewInvoice onBackToMain={goToMainPanel} />} />
+        <Route path="/suppliers/invoice_report" element={<InvoiceReport onBackToMain={goToMainPanel} />} />
         {/* Expenses */}
         <Route path="/expenses/expenses" element={<ExpensesPage onBackToMain={goToMainPanel} />} />
         <Route
