@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import Layout from '../../../components/Layout';
 import './RoleList.css';
 import { exportCopy, exportCSV, exportExcel, exportPDF } from './exportUtils';
+import { useNavigate } from 'react-router-dom'; 
 
 const mockRoles = [
   {
@@ -89,10 +90,18 @@ const columns = [
 ];
 
 const RoleList = () => {
+  const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [entries, setEntries] = useState(30);
   const [showModal, setShowModal] = useState(false);
   const [modalRole, setModalRole] = useState(null);
+  const handleManagePermissions = (e) =>{
+    e.preventDefault();
+    navigate('/users/edit_role');
+  }
+
+  // Local state for modal fields (for OT toggle)
+  const [modalFields, setModalFields] = useState(null);
   const [columnVisibility, setColumnVisibility] = useState({
     id: true,
     role_name: true,
@@ -110,17 +119,21 @@ const RoleList = () => {
   };
   const openSalaryModal = (role) => {
     setModalRole(role);
+    setModalFields({ ...role });
     setShowModal(true);
   };
   const closeSalaryModal = () => {
     setShowModal(false);
     setModalRole(null);
+    setModalFields(null);
   };
 
   // Filtered and paginated roles
   const filteredRoles = mockRoles.filter((role) =>
     role.role_name.toLowerCase().includes(search.toLowerCase())
   ).slice(0, entries);
+
+
 
   return (
     <Layout>
@@ -217,7 +230,7 @@ const RoleList = () => {
                     {columnVisibility.manage && (
                       <td className="px-3 py-2 text-end">
                         <button className="p-2 mr-2 text-white bg-blue-600 border-2 rounded-lg" onClick={() => openSalaryModal(role.data)}>Salary Settings</button>
-                        <button className="p-2 border-2 rounded-lg" onClick={() => alert('Manage Permissions (demo)')}>Manage Permissions</button>
+                        <button className="p-2 border-2 rounded-lg" onClick={handleManagePermissions} >Manage Permissions</button>
                       </td>
                     )}
                   </tr>
@@ -228,12 +241,12 @@ const RoleList = () => {
         </div>
 
         {/* Salary Modal */}
-        {showModal && modalRole && (
+        {showModal && modalRole && modalFields && (
           <div className="fixed top-0 left-0 z-50 flex items-center justify-center w-full h-full bg-black bg-opacity-50">
             <div className="relative w-full max-w-2xl max-h-full p-4">
               <div className="relative bg-white rounded-lg shadow">
                 <div className="flex items-center justify-between p-4 border-b rounded-t md:p-5">
-                  <h3 className="text-xl font-semibold text-gray-900">Salary Settings: <span>{modalRole.role_name}</span></h3>
+                  <h3 className="text-xl font-semibold text-gray-900">Salary Settings: <span>{modalFields.role_name}</span></h3>
                   <button type="button" className="inline-flex items-center justify-center w-8 h-8 text-sm text-gray-400 bg-transparent rounded-lg hover:bg-gray-200 hover:text-gray-900" onClick={closeSalaryModal}>
                     <svg className="w-3 h-3" aria-hidden="true" fill="none" viewBox="0 0 14 14"><path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="m1 1 6 6m0 0 6 6M7 7l6-6M7 7l-6 6" /></svg>
                     <span className="sr-only">Close modal</span>
@@ -255,35 +268,35 @@ const RoleList = () => {
                     </div>
                   </div>
                   {/* Hourly Rate Section */}
-                  {modalRole.salary_type === 'hourly' && (
+                  {modalFields.salary_type === 'hourly' && (
                     <div id="hourlySection" className="p-4 border border-blue-200 rounded-lg bg-blue-50">
                       <h4 className="mb-3 text-sm font-semibold text-gray-900">Hourly Rate Configuration</h4>
                       <div className="mb-3">
                         <label htmlFor="hourly_wage" className="block mb-2 text-sm font-medium text-gray-900">Hourly Wage (LKR)</label>
-                        <input type="number" id="hourly_wage" step="0.01" min="0" value={modalRole.hourly_wage} readOnly className="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" placeholder="0.00" />
+                        <input type="number" id="hourly_wage" step="0.01" min="0" value={modalFields.hourly_wage} readOnly className="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" placeholder="0.00" />
                       </div>
                     </div>
                   )}
                   {/* Monthly Salary Section */}
-                  {modalRole.salary_type === 'monthly' && (
+                  {modalFields.salary_type === 'monthly' && (
                     <div id="monthlySection" className="p-4 border border-green-200 rounded-lg bg-green-50">
                       <h4 className="mb-3 text-sm font-semibold text-gray-900">Monthly Salary Configuration</h4>
                       <div className="mb-3">
                         <label htmlFor="monthly_salary" className="block mb-2 text-sm font-medium text-gray-900">Monthly Basic Salary (LKR)</label>
-                        <input type="number" id="monthly_salary" step="0.01" min="0" value={modalRole.monthly_salary || ''} readOnly className="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" placeholder="0.00" />
+                        <input type="number" id="monthly_salary" step="0.01" min="0" value={modalFields.monthly_salary || ''} readOnly className="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" placeholder="0.00" />
                       </div>
                       <div className="mb-3">
                         <label htmlFor="daily_rate" className="block mb-2 text-sm font-medium text-gray-900">Daily Rate (LKR) <span className="text-xs text-gray-500">(Auto-calculated: Monthly ÷ 30)</span></label>
-                        <input type="number" id="daily_rate" step="0.01" min="0" value={modalRole.daily_rate || ''} readOnly className="bg-gray-100 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5" />
+                        <input type="number" id="daily_rate" step="0.01" min="0" value={modalFields.daily_rate || ''} readOnly className="bg-gray-100 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5" />
                       </div>
                       <div className="mb-3">
                         <label htmlFor="allowance" className="block mb-2 text-sm font-medium text-gray-900">Monthly Allowance (LKR) <span className="text-xs text-gray-500">(Transportation, meals, etc.)</span></label>
-                        <input type="number" id="allowance" step="0.01" min="0" value={modalRole.allowance || ''} readOnly className="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" placeholder="0.00" />
+                        <input type="number" id="allowance" step="0.01" min="0" value={modalFields.allowance || ''} readOnly className="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" placeholder="0.00" />
                         <p className="mt-1 text-xs text-gray-500">This allowance will be added to the monthly salary</p>
                       </div>
                       <div className="mb-3">
                         <label htmlFor="no_pay_rate" className="block mb-2 text-sm font-medium text-gray-900">No Pay Rate (LKR/day) <span className="text-xs text-gray-500">(Deduction per absent day)</span></label>
-                        <input type="number" id="no_pay_rate" step="0.01" min="0" value={modalRole.no_pay_rate || ''} readOnly className="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" placeholder="0.00" />
+                        <input type="number" id="no_pay_rate" step="0.01" min="0" value={modalFields.no_pay_rate || ''} readOnly className="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus-border-blue-500 block w-full p-2.5" placeholder="0.00" />
                         <p className="mt-1 text-xs text-gray-500">This amount will be deducted for each absent day (No Pay)</p>
                       </div>
                       {/* EPF/ETF Section */}
@@ -291,7 +304,7 @@ const RoleList = () => {
                         <div className="flex items-center justify-between mb-2">
                           <h5 className="text-sm font-semibold text-gray-900">EPF/ETF Deductions</h5>
                           <label className="relative inline-flex items-center cursor-pointer">
-                            <input type="checkbox" id="epf_enabled" checked={modalRole.epf_enabled} readOnly className="sr-only peer" />
+                            <input type="checkbox" id="epf_enabled" checked={modalFields.epf_enabled} readOnly className="sr-only peer" />
                             <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-orange-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orange-600"></div>
                             <span className="text-sm font-medium text-gray-900 ms-3">Enable EPF/ETF</span>
                           </label>
@@ -309,24 +322,30 @@ const RoleList = () => {
                     <div className="flex items-center justify-between mb-3">
                       <h4 className="text-sm font-semibold text-gray-900">Overtime Settings</h4>
                       <label className="relative inline-flex items-center cursor-pointer">
-                        <input type="checkbox" id="ot_included" checked={modalRole.ot_included} readOnly className="sr-only peer" />
+                        <input
+                          type="checkbox"
+                          id="ot_included"
+                          checked={modalFields.ot_included}
+                          onChange={e => setModalFields(fields => ({ ...fields, ot_included: e.target.checked }))}
+                          className="sr-only peer"
+                        />
                         <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
                         <span className="text-sm font-medium text-gray-900 ms-3">OT Included</span>
                       </label>
                     </div>
-                    {modalRole.ot_included && (
+                    {modalFields.ot_included && (
                       <div id="otRatesSection" className="space-y-3">
                         <div>
                           <label htmlFor="ot_rate" className="block mb-2 text-sm font-medium text-gray-900">OT Rate (LKR/hour)</label>
-                          <input type="number" id="ot_rate" step="0.01" min="0" value={modalRole.ot_rate || ''} readOnly className="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" placeholder="0.00" />
+                          <input type="number" id="ot_rate" step="0.01" min="0" value={modalFields.ot_rate || ''} readOnly className="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" placeholder="0.00" />
                         </div>
                         <div>
                           <label htmlFor="double_ot_rate" className="block mb-2 text-sm font-medium text-gray-900">Double OT Rate (LKR/hour)</label>
-                          <input type="number" id="double_ot_rate" step="0.01" min="0" value={modalRole.double_ot_rate || ''} readOnly className="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" placeholder="0.00" />
+                          <input type="number" id="double_ot_rate" step="0.01" min="0" value={modalFields.double_ot_rate || ''} readOnly className="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" placeholder="0.00" />
                         </div>
                         <div>
                           <label htmlFor="triple_ot_rate" className="block mb-2 text-sm font-medium text-gray-900">Triple OT Rate (LKR/hour)</label>
-                          <input type="number" id="triple_ot_rate" step="0.01" min="0" value={modalRole.triple_ot_rate || ''} readOnly className="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" placeholder="0.00" />
+                          <input type="number" id="triple_ot_rate" step="0.01" min="0" value={modalFields.triple_ot_rate || ''} readOnly className="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" placeholder="0.00" />
                         </div>
                         <div className="p-3 text-xs text-blue-800 rounded-lg bg-blue-100">
                           <strong>Tip:</strong> You can calculate hourly rate from daily price: Daily Price ÷ Hours Worked = Hourly Rate
