@@ -1,5 +1,5 @@
 
-import React, { useState, useRef } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import Layout from '../../../components/Layout';
 import './UserList.css';
 import { useNavigate } from 'react-router-dom'; 
@@ -20,34 +20,48 @@ const allColumns = [
   { key: 'manage', label: 'Manage' },
 ];
 
-const staticUsers = [
-  {
-    id: 1,
-    name: 'Admin',
-    email: 'admin@gmail.com',
-    role: 'admin',
-    mobile: '0761234567',
-    gender: 'male',
-    branch: 'Kandy',
-    status: 'Active',
-  },
-  // Add more static users as needed
-];
-
 const UserList = () => {
   const navigate = useNavigate();
 
   const [search, setSearch] = useState('');
   const [entries, setEntries] = useState(30);
-  const [users, setUsers] = useState(staticUsers);
+  const [users, setUsers] = useState([]);
   const [visibleCols, setVisibleCols] = useState(allColumns.map(col => col.key));
   const [popoverOpen, setPopoverOpen] = useState(false);
   const popoverRef = useRef(null);
 
+  // Load users from database (no static/mock data)
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      setUsers([]);
+      return;
+    }
+
+    fetch('/api/users', {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(async (res) => {
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data?.error || 'Failed to load users');
+        return data;
+      })
+      .then((data) => {
+        const list = Array.isArray(data) ? data : (data?.users || []);
+        setUsers(list);
+      })
+      .catch(() => setUsers([]));
+  }, []);
+
   // Filtered users by search
-  const filteredUsers = users.filter(user =>
-    user.name.toLowerCase().includes(search.toLowerCase())
-  ).slice(0, entries);
+  const filteredUsers = users
+    .filter((user) => {
+      const name = (user?.name || '').toLowerCase();
+      const email = (user?.email || '').toLowerCase();
+      const q = search.toLowerCase();
+      return name.includes(q) || email.includes(q);
+    })
+    .slice(0, entries);
 
   const handleEdit = (e) => {
     e.preventDefault();
@@ -56,11 +70,7 @@ const UserList = () => {
 
   
 
-  const handleStatusToggle = (id) => {
-    setUsers(prev => prev.map(user =>
-      user.id === id ? { ...user, status: user.status === 'Active' ? 'Inactive' : 'Active' } : user
-    ));
-  };
+
 
   // Copy to clipboard
   const handleCopy = () => {
@@ -250,9 +260,6 @@ const UserList = () => {
                     {visibleCols.includes('manage') && (
                       <td className="px-4 py-2 flex gap-2">
                         <button className="p-2 border-2 rounded-lg" onClick={handleEdit} >Edit</button>
-                        <button className={`p-2 text-white border-2 rounded-lg ${user.status === 'Active' ? 'bg-green-600' : 'bg-gray-400'}`} onClick={() => handleStatusToggle(user.id)}>
-                          {user.status === 'Active' ? 'Active' : 'Inactive'}
-                        </button>
                       </td>
                     )}
                   </tr>
