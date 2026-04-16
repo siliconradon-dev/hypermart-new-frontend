@@ -1,3 +1,5 @@
+import { useNavigate } from 'react-router-dom';
+
 function Header({
   onBackToMain,
   onPOS,
@@ -7,6 +9,7 @@ function Header({
   showPosButton = true,
   showLogo,
 }) {
+  const navigate = useNavigate();
   // Original behavior: show logo everywhere by default.
   // Can be overridden by passing showLogo={true|false}.
   const shouldShowLogo = typeof showLogo === 'boolean' ? showLogo : true;
@@ -37,6 +40,23 @@ function Header({
       return;
     }
     window.history.go(-1);
+  };
+
+  const handleLogout = async () => {
+    const token = localStorage.getItem('token');
+
+    try {
+      await fetch('/api/auth/logout', {
+        method: 'POST',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+    } catch {
+      // ignore network errors
+    } finally {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      navigate('/', { replace: true });
+    }
   };
 
   return (
@@ -89,7 +109,7 @@ function Header({
 
         <button
           type="button"
-          onClick={() => alert('Frontend demo: logout action disabled.')}
+          onClick={handleLogout}
           className="rounded-full w-[50px] aspect-square bg-white flex justify-center items-center hover:scale-90 transition-all"
         >
           <i className="text-xl font-bold text-[#000000] fas fa-sign-out-alt" />
