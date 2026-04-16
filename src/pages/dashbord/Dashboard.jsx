@@ -57,6 +57,16 @@ function DashbordDashboard({ onBackToMain }) {
   const chartContainerRef = useRef(null);
   const chartRef = useRef(null);
   const hideBrokenImage = (e) => { e.currentTarget.style.display = 'none'; };
+
+  let user = null;
+  try {
+    user = JSON.parse(localStorage.getItem('user') || 'null');
+  } catch {
+    user = null;
+  }
+
+  const isDeactivated = Number(user?.status_id ?? 1) === 0;
+
   useEffect(() => {
     if (activeView !== 'chart') {
       if (chartRef.current) { chartRef.current.destroy(); chartRef.current = null; }
@@ -79,6 +89,20 @@ function DashbordDashboard({ onBackToMain }) {
     chartRef.current.render();
     return () => { if (chartRef.current) { chartRef.current.destroy(); chartRef.current = null; } };
   }, [activeView]);
+  if (isDeactivated) {
+    return (
+      <Layout
+        onBackToMain={onBackToMain}
+        contentStyle={{
+          backgroundImage: "url('/images/dash-bg.png')",
+          backgroundRepeat: 'no-repeat',
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+        }}
+      />
+    );
+  }
+
   return (
     <Layout onBackToMain={onBackToMain}>
       <div className="px-12 py-2 max-sm:px-6">

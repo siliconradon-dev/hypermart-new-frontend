@@ -14,6 +14,15 @@ function Header({
   // Can be overridden by passing showLogo={true|false}.
   const shouldShowLogo = typeof showLogo === 'boolean' ? showLogo : true;
 
+  let user = null;
+  try {
+    user = JSON.parse(localStorage.getItem('user') || 'null');
+  } catch {
+    user = null;
+  }
+
+  const isDeactivated = Number(user?.status_id ?? 1) === 0;
+
   const getGreeting = () => {
     const hour = new Date().getHours();
 
@@ -81,7 +90,7 @@ function Header({
           </button>
         )}
 
-        {showPosButton && (
+        {showPosButton && !isDeactivated && (
           <button
             onClick={onPOS}
             className="p-2 text-[#000000] rounded-lg bg-white flex gap-3 justify-center items-center hover:scale-90 transition-all"

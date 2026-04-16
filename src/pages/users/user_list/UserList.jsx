@@ -63,9 +63,50 @@ const UserList = () => {
     })
     .slice(0, entries);
 
-  const handleEdit = (e) => {
+  const getUserCellValue = (user, key) => {
+    if (key === 'status') return Number(user?.status_id ?? 1) === 1 ? 'Active' : 'Inactive';
+    return user?.[key] ?? '';
+  };
+
+  const handleEdit = (e, userId) => {
     e.preventDefault();
-    navigate(`/users/edit_users`);
+    navigate('/users/edit_users', { state: { userId } });
+  };
+
+  const handleToggleStatus = async (user) => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    const current = Number(user?.status_id ?? 1);
+    const newStatus = current === 1 ? 0 : 1;
+    const actionText = newStatus === 1 ? 'activate' : 'deactivate';
+
+    const ok = window.confirm(`Are you sure you want to ${actionText} this user?`);
+    if (!ok) return;
+
+    try {
+      const res = await fetch(`/api/users/${encodeURIComponent(user.id)}/status`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ status_id: newStatus }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.error || 'Failed to update status');
+
+      setUsers((prev) =>
+        prev.map((u) =>
+          u.id === user.id
+            ? { ...u, status_id: newStatus, status: newStatus === 1 ? 'Active' : 'Inactive' }
+            : u
+        )
+      );
+    } catch (err) {
+      alert(err?.message || 'Failed to update status');
+    }
   };
 
   
@@ -77,8 +118,10 @@ const UserList = () => {
     let data = '';
     filteredUsers.forEach((user, idx) => {
       let row = [idx + 1];
-      allColumns.forEach(col => {
-        if (col.key !== 'manage' && visibleCols.includes(col.key)) row.push(user[col.key]);
+      allColumns.forEach((col) => {
+        if (col.key !== 'manage' && visibleCols.includes(col.key)) {
+          row.push(getUserCellValue(user, col.key));
+        }
       });
       data += row.join('\t') + '\n';
     });
@@ -90,11 +133,16 @@ const UserList = () => {
   // Export CSV
   const handleCSV = () => {
     let csv = '';
-    csv += ['#', ...allColumns.filter(col => col.key !== 'manage' && visibleCols.includes(col.key)).map(col => col.label)].join(',') + '\n';
+    csv +=
+      ['#', ...allColumns.filter((col) => col.key !== 'manage' && visibleCols.includes(col.key)).map((col) => col.label)].join(
+        ','
+      ) + '\n';
     filteredUsers.forEach((user, idx) => {
       let row = [idx + 1];
-      allColumns.forEach(col => {
-        if (col.key !== 'manage' && visibleCols.includes(col.key)) row.push(user[col.key]);
+      allColumns.forEach((col) => {
+        if (col.key !== 'manage' && visibleCols.includes(col.key)) {
+          row.push(getUserCellValue(user, col.key));
+        }
       });
       csv += row.join(',') + '\n';
     });
@@ -111,11 +159,13 @@ const UserList = () => {
   // Export Excel
   const handleExcel = () => {
     const wsData = [
-      ['#', ...allColumns.filter(col => col.key !== 'manage' && visibleCols.includes(col.key)).map(col => col.label)],
+      ['#', ...allColumns.filter((col) => col.key !== 'manage' && visibleCols.includes(col.key)).map((col) => col.label)],
       ...filteredUsers.map((user, idx) => [
         idx + 1,
-        ...allColumns.filter(col => col.key !== 'manage' && visibleCols.includes(col.key)).map(col => user[col.key])
-      ])
+        ...allColumns
+          .filter((col) => col.key !== 'manage' && visibleCols.includes(col.key))
+          .map((col) => getUserCellValue(user, col.key)),
+      ]),
     ];
     const ws = XLSX.utils.aoa_to_sheet(wsData);
     const wb = XLSX.utils.book_new();
@@ -126,10 +176,14 @@ const UserList = () => {
   // Export PDF
   const handlePDF = () => {
     const doc = new jsPDF();
-    const head = [['#', ...allColumns.filter(col => col.key !== 'manage' && visibleCols.includes(col.key)).map(col => col.label)]];
+    const head = [
+      ['#', ...allColumns.filter((col) => col.key !== 'manage' && visibleCols.includes(col.key)).map((col) => col.label)],
+    ];
     const body = filteredUsers.map((user, idx) => [
       idx + 1,
-      ...allColumns.filter(col => col.key !== 'manage' && visibleCols.includes(col.key)).map(col => user[col.key])
+      ...allColumns
+        .filter((col) => col.key !== 'manage' && visibleCols.includes(col.key))
+        .map((col) => getUserCellValue(user, col.key)),
     ]);
     autoTable(doc, { head, body });
     doc.save('userTable.pdf');
@@ -249,21 +303,54 @@ const UserList = () => {
                 </tr>
               </thead>
               <tbody>
-                {filteredUsers.map((user, idx) => (
-                  <tr key={user.id} className="text-black bg-white border-2">
-                    <td className="px-4 py-2 font-medium whitespace-nowrap">{idx + 1}</td>
-                    {allColumns.map(col =>
-                      col.key !== 'manage' && visibleCols.includes(col.key) ? (
-                        <td key={col.key} className="px-4 py-2">{user[col.key]}</td>
-                      ) : null
-                    )}
-                    {visibleCols.includes('manage') && (
-                      <td className="px-4 py-2 flex gap-2">
-                        <button className="p-2 border-2 rounded-lg" onClick={handleEdit} >Edit</button>
-                      </td>
-                    )}
-                  </tr>
-                ))}
+                {filteredUsers.map((user, idx) => {
+                  const isActive = Number(user?.status_id ?? 1) === 1;
+
+                  return (
+                    <tr key={user.id} className="text-black bg-white border-2">
+                      <td className="px-4 py-2 font-medium whitespace-nowrap">{idx + 1}</td>
+                      {allColumns.map((col) =>
+                        col.key !== 'manage' && visibleCols.includes(col.key) ? (
+                          <td key={col.key} className="px-4 py-2">
+                            {col.key === 'status' ? (
+                              <span
+                                className={
+                                  'px-3 py-1 rounded text-xs font-semibold ' +
+                                  (isActive ? 'bg-green-600 text-white' : 'bg-red-600 text-white')
+                                }
+                              >
+                                {isActive ? 'Active' : 'Inactive'}
+                              </span>
+                            ) : (
+                              getUserCellValue(user, col.key)
+                            )}
+                          </td>
+                        ) : null
+                      )}
+                      {visibleCols.includes('manage') && (
+                        <td className="px-4 py-2 flex gap-2">
+                          <button
+                            className="p-2 border-2 rounded-lg"
+                            onClick={(e) => handleEdit(e, user.id)}
+                          >
+                            Edit
+                          </button>
+                          <button
+                            className={
+                              'p-2 border-2 rounded-lg text-white ' +
+                              (isActive
+                                ? 'bg-red-600 border-red-600'
+                                : 'bg-green-600 border-green-600')
+                            }
+                            onClick={() => handleToggleStatus(user)}
+                          >
+                            {isActive ? 'Deactivate' : 'Activate'}
+                          </button>
+                        </td>
+                      )}
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

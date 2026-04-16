@@ -12,6 +12,8 @@ const Layout = ({
   showMainPanelButton = true,
   showPosButton = true,
   showLogo,
+  contentClassName,
+  contentStyle,
 }) => {
   const navigate = useNavigate();
   const handleBackToMain = onBackToMain || (() => navigate('/dashboard'));
@@ -28,7 +30,10 @@ const Layout = ({
         showPosButton={showPosButton}
         showLogo={showLogo}
       />
-      <div className="flex-1 min-h-0">
+      <div
+        className={`flex-1 min-h-0 ${contentClassName || ''}`}
+        style={contentStyle}
+      >
         {children}
       </div>
       <Footer />

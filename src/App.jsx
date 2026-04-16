@@ -134,24 +134,28 @@ function App() {
           path="/dashboard"
           element={
             token ? (
-              <Dashboard
-                role={role}
-                onOpenDashbord={() => navigate('/dashboard/dashboard')}
-                onOpenBilling={() => navigate('/sales/billing')}
-                onOpenItem={() => navigate('/item')}
-                onExportPanel={() => navigate('/item/export_panel')}
-                onStock={() => navigate('/stock/stock')}
-                onOpenSales={() => navigate('/sales/sales')}
-                onDueAmount={() => navigate('sales/due_amount')}
-                onOpenUsers={() => navigate('/users/users')}
-                onOpenCustomers={() => navigate('/customers/customers')}
-                onOpenSuppliers={() => navigate('/suppliers/suppliers')}
-                onOpenExpenses={() => navigate('/expenses/expenses')}
-                onOpenFinance={() => navigate('/finance')}
-                onOpenReports={() => navigate('/reports/reports')}
-                onOpenStockReport={() => navigate('reports/stock_report')}
-                onOpenSettings={() => navigate('/settings/settings')}
-              />
+              Number(user?.status_id ?? 1) === 0 ? (
+                <Navigate to="/dashboard/dashboard" replace />
+              ) : (
+                <Dashboard
+                  role={role}
+                  onOpenDashbord={() => navigate('/dashboard/dashboard')}
+                  onOpenBilling={() => navigate('/sales/billing')}
+                  onOpenItem={() => navigate('/item')}
+                  onExportPanel={() => navigate('/item/export_panel')}
+                  onStock={() => navigate('/stock/stock')}
+                  onOpenSales={() => navigate('/sales/sales')}
+                  onDueAmount={() => navigate('sales/due_amount')}
+                  onOpenUsers={() => navigate('/users/users')}
+                  onOpenCustomers={() => navigate('/customers/customers')}
+                  onOpenSuppliers={() => navigate('/suppliers/suppliers')}
+                  onOpenExpenses={() => navigate('/expenses/expenses')}
+                  onOpenFinance={() => navigate('/finance')}
+                  onOpenReports={() => navigate('/reports/reports')}
+                  onOpenStockReport={() => navigate('reports/stock_report')}
+                  onOpenSettings={() => navigate('/settings/settings')}
+                />
+              )
             ) : (
               <Navigate to="/" replace />
             )

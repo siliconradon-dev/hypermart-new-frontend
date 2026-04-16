@@ -15,7 +15,18 @@ const Home = () => {
 
   useEffect(() => {
     const token = localStorage.getItem('token');
-    if (token) navigate('/dashboard', { replace: true });
+
+    let user = null;
+    try {
+      user = JSON.parse(localStorage.getItem('user') || 'null');
+    } catch {
+      user = null;
+    }
+
+    if (token) {
+      const isDeactivated = Number(user?.status_id ?? 1) === 0;
+      navigate(isDeactivated ? '/dashboard/dashboard' : '/dashboard', { replace: true });
+    }
   }, [navigate]);
 
   const handleSubmit = async (e) => {
@@ -36,7 +47,8 @@ const Home = () => {
       localStorage.setItem('token', data.token);
       localStorage.setItem('user', JSON.stringify(data.user));
 
-      navigate('/dashboard');
+      const isDeactivated = Number(data?.user?.status_id ?? 1) === 0;
+      navigate(isDeactivated ? '/dashboard/dashboard' : '/dashboard');
     } catch (err) {
       setError(err?.message || 'Login failed');
     } finally {
