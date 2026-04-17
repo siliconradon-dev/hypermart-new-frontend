@@ -9,27 +9,41 @@ const EditItemPage = () => {
   const id = String(searchParams.get('id') || '').trim();
   const returnTo = String(searchParams.get('returnTo') || '');
 
+  // Show correct image preview for all path types
+  const BACKEND_URL = 'http://localhost:3000';
   const normalizeImageSrc = (src) => {
     const value = String(src || '').trim();
-    if (!value) return '/images/upload/default.png';
+    if (!value) return BACKEND_URL + '/upload/items/default.png';
     if (value.startsWith('data:')) return value;
     if (value.startsWith('http://') || value.startsWith('https://')) return value;
-    // Always expect image_path to be relative to public/images/upload/items
-    // If value is absolute path, extract only the filename
-    const match = value.match(/(?:images[\\\/]upload[\\\/]items[\\\/]?)([^\\\/]+)$/i);
-    if (match) {
-      return `/images/upload/items/${match[1]}`;
+
+    // Handle absolute server path (legacy/incorrect DB value)
+    // e.g. backend\\hypermart-new-backend\\public\\images\\upload\\items\\images-1776413132646.jpg
+    const absMatch = value.match(/[\\/]images[\\/]upload[\\/]items[\\/](.+)$/i);
+    if (absMatch) {
+      return BACKEND_URL + '/upload/items/' + absMatch[1];
     }
-    // If value is just a filename, use it directly
-    if (/^[^\\\/]+\.(jpg|jpeg|png|gif|webp)$/i.test(value)) {
-      return `/images/upload/items/${value}`;
+
+    // If path starts with /upload/items or upload/items, serve from backend
+    if (value.startsWith('/upload/items/')) {
+      return BACKEND_URL + value;
     }
-    // If value is already a relative path under images/upload/items
+    if (value.startsWith('upload/items/')) {
+      return BACKEND_URL + '/' + value;
+    }
+    // If path starts with /images/upload/items or images/upload/items, convert to /upload/items/
+    if (value.startsWith('/images/upload/items/')) {
+      return BACKEND_URL + '/upload/items/' + value.replace('/images/upload/items/', '');
+    }
     if (value.startsWith('images/upload/items/')) {
-      return `/${value}`;
+      return BACKEND_URL + '/upload/items/' + value.replace('images/upload/items/', '');
     }
-    // Fallback
-    return '/images/upload/default.png';
+    // If value is just a filename, serve from backend
+    if (/^[^\/]+\.(jpg|jpeg|png|gif|webp)$/i.test(value)) {
+      return BACKEND_URL + '/upload/items/' + value;
+    }
+    // Fallback to backend default
+    return BACKEND_URL + '/upload/items/default.png';
   };
 
   const [loading, setLoading] = React.useState(false);
