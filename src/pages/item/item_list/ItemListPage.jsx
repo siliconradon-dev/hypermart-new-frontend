@@ -173,10 +173,17 @@ const ItemListPage = () => {
         return;
       }
 
+
       const normalized = Array.isArray(data?.items)
         ? data.items.map((it) => {
           const qty = Number(it.quantity ?? 0);
-          const statusText = qty > 0 ? 'In Stock' : 'Out of Stock';
+          // Use status_id: 0 = Out of Stock, 1 = In Stock (adjust if your DB uses different values)
+          let statusText = 'In Stock';
+          if (typeof it.status_id !== 'undefined') {
+            statusText = Number(it.status_id) === 0 ? 'Out of Stock' : 'In Stock';
+          } else {
+            statusText = qty > 0 ? 'In Stock' : 'Out of Stock';
+          }
           return {
             id: it.id,
             item_code: it.item_code,
@@ -269,11 +276,55 @@ const ItemListPage = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sortKey, sortOrder, page, pageSize, searchTerm, selectedCategory, selectedSupplier]);
 
+
   // Edit button handler
   const handleEditItem = (e, id) => {
     e.preventDefault();
     const returnTo = encodeURIComponent(location.search || '');
     navigate(`/item/edit_item?id=${encodeURIComponent(String(id))}&returnTo=${returnTo}`);
+  };
+
+
+  // Status toggle handler (Out Of Stock <-> In Stock)
+  const handleToggleStockStatus = async (e, id, toStatus) => {
+    e.preventDefault();
+    const token = ensureToken();
+    if (!token) return;
+    try {
+      setLoading(true);
+      setError("");
+      // PATCH /api/items/:id/status with { status: 'out_of_stock' | 'in_stock' }
+      const resp = await fetch(`/api/items/${id}/status`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ status: toStatus }),
+      });
+      if (resp.status === 401) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        window.location.assign('/');
+        return;
+      }
+      if (!resp.ok) {
+        const data = await resp.json().catch(() => ({}));
+        setError(data?.error || 'Failed to update item status.');
+        return;
+      }
+      // Refresh items
+      await loadItems({
+        token,
+        search: searchTerm.trim(),
+        categoryId: selectedCategory,
+        supplierId: selectedSupplier,
+      });
+    } catch {
+      setError('Network error. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSearch = async () => {
@@ -628,7 +679,14 @@ const ItemListPage = () => {
                         if (col.key === 'status')
                           return <td key={col.key} className="px-4 py-2">
                             <span
-                              style={{ padding: '5px 10px', border: '1px solid green', borderRadius: 5, backgroundColor: 'transparent', color: 'green', cursor: 'pointer' }}
+                              style={{
+                                padding: '5px 10px',
+                                border: `1px solid ${item.status === 'Out of Stock' ? 'red' : 'green'}`,
+                                borderRadius: 5,
+                                backgroundColor: 'transparent',
+                                color: item.status === 'Out of Stock' ? 'red' : 'green',
+                                cursor: 'pointer',
+                              }}
                               className="text-nowrap"
                             >
                               {item.status}
@@ -637,7 +695,25 @@ const ItemListPage = () => {
                         if (col.key === 'manage')
                           return <td key={col.key} className="px-4 py-2 flex flex-wrap gap-2">
                             <button onClick={(e) => handleEditItem(e, item.id)} className="p-2 border-2 rounded-lg">Edit</button>
-                            <button className="p-2 text-white bg-red-600 border-2 rounded-lg">Out Of stock</button>
+                            {item.status === 'Out of Stock' ? (
+                              <button
+                                className="p-2 text-white bg-green-600 border-2 rounded-lg"
+                                onClick={(e) => handleToggleStockStatus(e, item.id, 'in_stock')}
+                                disabled={loading}
+                                title="Mark as in stock"
+                              >
+                                In Stock
+                              </button>
+                            ) : (
+                              <button
+                                className="p-2 text-white bg-red-600 border-2 rounded-lg"
+                                onClick={(e) => handleToggleStockStatus(e, item.id, 'out_of_stock')}
+                                disabled={item.status === 'Out of Stock' || loading}
+                                title={item.status === 'Out of Stock' ? 'Already out of stock' : 'Mark as out of stock'}
+                              >
+                                Out Of stock
+                              </button>
+                            )}
                           </td>;
                         return null;
                       })}
