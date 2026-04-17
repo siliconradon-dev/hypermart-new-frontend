@@ -1,14 +1,6 @@
-import React, { useState, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../../../components/Layout';
-
-const initialCategories = [
-  {
-    id: 1,
-    name: 'sample category',
-    description: 'sample category',
-  },
-];
 
 const allColumns = [
   { key: 'id', label: '#' },
@@ -19,12 +11,50 @@ const allColumns = [
 
 const CategoryListPage = () => {
   const navigate = useNavigate();
-  const [categories] = useState(initialCategories);
+  const [categories, setCategories] = useState([]);
   const [search, setSearch] = useState('');
   const [entries, setEntries] = useState(30);
   const [visibleCols, setVisibleCols] = useState(allColumns.map(col => col.key));
   const [popoverOpen, setPopoverOpen] = useState(false);
   const popoverRef = useRef(null);
+
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      navigate('/', { replace: true });
+      return;
+    }
+
+    const load = async () => {
+      try {
+        const res = await fetch('/api/item-categories', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          if (res.status === 401) {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            navigate('/', { replace: true });
+          }
+          return;
+        }
+
+        const rows = Array.isArray(data?.categories) ? data.categories : [];
+        setCategories(
+          rows.map((c) => ({
+            id: c.id,
+            name: c.categories,
+            description: c.description,
+          }))
+        );
+      } catch {
+        // ignore network errors; table will show empty state
+      }
+    };
+
+    load();
+  }, [navigate]);
 
   // Filtered and paginated categories
   const filtered = categories.filter(cat =>
@@ -38,9 +68,8 @@ const CategoryListPage = () => {
     );
   };
 
-  const handleEditCategory = (e) => {
-    e.preventDefault();
-    navigate('/item/category/edit_category');
+  const handleEditCategory = (id) => {
+    navigate(`/item/category/edit_category?id=${encodeURIComponent(String(id))}`);
   };
 
   return (
@@ -190,7 +219,7 @@ const CategoryListPage = () => {
                     <td colSpan={visibleCols.length} className="text-center py-8 text-gray-400">No categories found</td>
                   </tr>
                 ) : (
-                  shown.map((cat, idx) => (
+                  shown.map((cat) => (
                     <tr key={cat.id} className="text-black bg-white border-2">
                       {visibleCols.includes('id') && (
                         <td className="px-4 py-2 font-medium whitespace-nowrap">{cat.id}</td>
@@ -203,7 +232,7 @@ const CategoryListPage = () => {
                       )}
                       {visibleCols.includes('manage') && (
                         <td className="px-4 py-2">
-                          <button onClick={handleEditCategory} className="px-2 py-1 border-2 rounded-lg">Edit</button>
+                          <button onClick={() => handleEditCategory(cat.id)} className="px-2 py-1 border-2 rounded-lg">Edit</button>
                           <button className="hidden px-2 py-1 text-white bg-red-600 border-2 rounded-lg ml-2">Delete</button>
                         </td>
                       )}

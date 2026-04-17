@@ -1,9 +1,122 @@
-import React from 'react'
+import React, { useEffect, useState } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import Layout from '../../../components/Layout'
 import './EditCategory.css'
 
 
 const EditCategory = () => {
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+
+  const id = searchParams.get('id');
+
+  const [catName, setCatName] = useState('');
+  const [description, setDescription] = useState('');
+  const [catNameError, setCatNameError] = useState('');
+  const [descriptionError, setDescriptionError] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      navigate('/', { replace: true });
+      return;
+    }
+
+    const idNum = Number(id);
+    if (!id || !Number.isInteger(idNum) || idNum <= 0) {
+      navigate('/item/category_list', { replace: true });
+      return;
+    }
+
+    const load = async () => {
+      setIsLoading(true);
+      setCatNameError('');
+      setDescriptionError('');
+
+      try {
+        const res = await fetch(`/api/item-categories/${idNum}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json().catch(() => ({}));
+
+        if (!res.ok) {
+          if (res.status === 401) {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            navigate('/', { replace: true });
+            return;
+          }
+          navigate('/item/category_list', { replace: true });
+          return;
+        }
+
+        setCatName(data?.category?.categories ?? '');
+        setDescription(data?.category?.description ?? '');
+      } catch {
+        setDescriptionError('Network error. Please try again.');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    load();
+  }, [id, navigate]);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setCatNameError('');
+    setDescriptionError('');
+
+    const token = localStorage.getItem('token');
+    if (!token) {
+      navigate('/', { replace: true });
+      return;
+    }
+
+    const idNum = Number(id);
+    if (!id || !Number.isInteger(idNum) || idNum <= 0) {
+      navigate('/item/category_list', { replace: true });
+      return;
+    }
+
+    if (!catName.trim()) {
+      setCatNameError('Category name is required.');
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/item-categories/${idNum}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ categories: catName, description }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const msg = data?.error || 'Failed to update category.';
+        if (res.status === 400 || res.status === 409) {
+          setCatNameError(msg);
+        } else if (res.status === 401) {
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          navigate('/', { replace: true });
+        } else {
+          setDescriptionError(msg);
+        }
+        return;
+      }
+
+      alert('Category updated!');
+      navigate('/item/category_list');
+    } catch {
+      setDescriptionError('Network error. Please try again.');
+    }
+  };
+
   return (
     <Layout>
       <div className="edit-category-form">
@@ -36,22 +149,56 @@ const EditCategory = () => {
             </li>
           </ol>
         </nav>
-        <form className="flex-grow p-6" autoComplete="off">
+        <form className="flex-grow p-6" autoComplete="off" onSubmit={handleSubmit}>
           <div className="flex flex-col flex-grow h-full p-6 border-2 rounded-lg">
             <div className="form-section">
               <div>
                 <label htmlFor="cat_name">Category</label>
-                <input type="text" id="cat_name" name="categories" placeholder="Your Category name" defaultValue="sample category" required />
+                <input
+                  type="text"
+                  id="cat_name"
+                  name="categories"
+                  placeholder="Your Category name"
+                  value={catName}
+                  onChange={(e) => setCatName(e.target.value)}
+                  disabled={isLoading}
+                  required
+                />
+                <p className="mt-1 text-sm text-red-500">{catNameError}</p>
               </div>
             </div>
             <div className="form-section">
               <label htmlFor="desc">Your description</label>
-              <textarea id="desc" rows={4} name="description" placeholder="Enter description" defaultValue="sample category"></textarea>
+              <textarea
+                id="desc"
+                rows={4}
+                name="description"
+                placeholder="Enter description"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                disabled={isLoading}
+              ></textarea>
+              <p className="mt-1 text-sm text-red-500">{descriptionError}</p>
             </div>
             <div className="form-actions">
               <button className="save-btn" type="submit">Save</button>
-              <button className="reset-btn" type="reset">Reset</button>
-              <button className="cancel-btn" type="button" onClick={() => window.location.href='/item/category_list'}>Cancel</button>
+              <button
+                className="reset-btn"
+                type="button"
+                onClick={() => {
+                  setCatNameError('');
+                  setDescriptionError('');
+                }}
+              >
+                Reset
+              </button>
+              <button
+                className="cancel-btn"
+                type="button"
+                onClick={() => navigate('/item/category_list')}
+              >
+                Cancel
+              </button>
             </div>
           </div>
         </form>
