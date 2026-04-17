@@ -5,19 +5,77 @@ import './AddSupplier.css';
 const AddSupplier = ({ onBackToMain }) => {
   const formRef = useRef(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
 
   const resetForm = () => {
     formRef.current?.reset();
+    setError('');
+    setSuccess('');
   };
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
+    setError('');
+    setSuccess('');
     setLoading(true);
 
-    window.setTimeout(() => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      localStorage.removeItem('user');
       setLoading(false);
+      window.location.assign('/');
+      return;
+    }
+
+    try {
+      const formData = new FormData(formRef.current);
+
+      const payload = {
+        supplier_name: String(formData.get('supplier_name') || '').trim(),
+        contact_number: String(formData.get('contact_number') || '').trim(),
+        email: String(formData.get('email') || '').trim(),
+        vat_no: String(formData.get('vat_no') || '').trim(),
+        address: String(formData.get('address') || '').trim(),
+        city_id: String(formData.get('city_id') || '').trim(),
+        city_name: String(formData.get('city_name') || '').trim(),
+        opening_balance_type: String(formData.get('opening_balance_type') || 'debit').trim(),
+        opening_balance: String(formData.get('opening_balance') || '0').trim(),
+      };
+
+      // Convert empty city_id to null-like on backend via '' check.
+      if (payload.city_id === '') payload.city_id = '';
+
+      const resp = await fetch('/api/suppliers', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await resp.json().catch(() => ({}));
+
+      if (resp.status === 401) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        window.location.assign('/');
+        return;
+      }
+
+      if (!resp.ok) {
+        setError(data?.error || 'Failed to add supplier.');
+        return;
+      }
+
+      setSuccess('Supplier added successfully.');
       resetForm();
-    }, 900);
+    } catch {
+      setError('Network error. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -66,8 +124,19 @@ const AddSupplier = ({ onBackToMain }) => {
           <div className="flex flex-col flex-grow">
             <div className="p-6">
               <div className="flex flex-col flex-grow h-full p-6 border-2 rounded-lg bg-white">
-                <form ref={formRef} action="https://hypermart-new.onlinesytems.com/suppliers" method="POST" onSubmit={handleSubmit}>
-                  <input type="hidden" name="_token" value="lV3JlfzCkgPECFRBCdzhJF9SqMhIjHSHrPuXtcvI" autoComplete="off" />
+                <form ref={formRef} onSubmit={handleSubmit}>
+
+                  {error && (
+                    <div className="mb-4 rounded-lg border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700">
+                      {error}
+                    </div>
+                  )}
+
+                  {success && (
+                    <div className="mb-4 rounded-lg border border-green-300 bg-green-50 px-4 py-3 text-sm text-green-700">
+                      {success}
+                    </div>
+                  )}
 
                   <div className="grid gap-6 mb-6 md:grid-cols-3">
                     <div className="md:col-span-2">
