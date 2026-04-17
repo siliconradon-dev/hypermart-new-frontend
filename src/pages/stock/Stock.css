@@ -61,3 +61,11 @@
   color: #fff;
   border: none;
 }
+
+/* Sticky header for the current Stock table (uses id="stockTable" in Stock.jsx) */
+#stockTable thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background-color: #3c8c2c;
+}
