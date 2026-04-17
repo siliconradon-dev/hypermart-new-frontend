@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 // Simple custom searchable dropdown component
 function SearchableSelect({ label, options, value, onChange, placeholder, name, required, error }) {
@@ -51,26 +51,74 @@ function AddItemPage() {
   const [expiryEnabled, setExpiryEnabled] = useState(false);
   const [imagePreview, setImagePreview] = useState(null);
   const [imageName, setImageName] = useState('');
+  const [imageFile, setImageFile] = useState(null);
   const [category, setCategory] = useState(null);
   const [supplier, setSupplier] = useState(null);
   const [categoryError, setCategoryError] = useState('');
   const [supplierError, setSupplierError] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [categoryOptions, setCategoryOptions] = useState([]);
+  const [supplierOptions, setSupplierOptions] = useState([]);
   const fileInputRef = useRef();
+  const formRef = useRef(null);
 
-  // Example options (replace with real data as needed)
-  const categoryOptions = [
-    { value: '', label: 'Select category' },
-    { value: '1', label: 'Sample Category' },
-    { value: '2', label: 'Electronics' },
-    { value: '3', label: 'Groceries' },
-    { value: '4', label: 'Clothing' },
-  ];
-  const supplierOptions = [
-    { value: '', label: 'Your supplier name' },
-    { value: '1', label: 'Sample Supplier' },
-    { value: '2', label: 'ABC Traders' },
-    { value: '3', label: 'XYZ Distributors' },
-  ];
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      localStorage.removeItem('user');
+      window.location.assign('/');
+      return;
+    }
+
+    const load = async () => {
+      setError('');
+      setLoading(true);
+      try {
+        const [catResp, supResp] = await Promise.all([
+          fetch('/api/item-categories', { headers: { Authorization: `Bearer ${token}` } }),
+          fetch('/api/suppliers?limit=500', { headers: { Authorization: `Bearer ${token}` } }),
+        ]);
+
+        const cats = await catResp.json().catch(() => ({}));
+        const sups = await supResp.json().catch(() => ({}));
+
+        if (catResp.status === 401 || supResp.status === 401) {
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          window.location.assign('/');
+          return;
+        }
+
+        if (!catResp.ok) {
+          setError(cats?.error || 'Failed to load categories.');
+          return;
+        }
+
+        if (!supResp.ok) {
+          setError(sups?.error || 'Failed to load suppliers.');
+          return;
+        }
+
+        const nextCategoryOptions = Array.isArray(cats?.categories)
+          ? cats.categories.map((c) => ({ value: String(c.id), label: c.categories }))
+          : [];
+        const nextSupplierOptions = Array.isArray(sups?.suppliers)
+          ? sups.suppliers.map((s) => ({ value: String(s.id), label: s.supplier_name }))
+          : [];
+
+        setCategoryOptions(nextCategoryOptions);
+        setSupplierOptions(nextSupplierOptions);
+      } catch {
+        setError('Network error. Please try again.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    load();
+  }, []);
 
   const handleBackToMain = () => {
     navigate('/dashboard');
@@ -84,12 +132,122 @@ function AddItemPage() {
     const file = e.target.files[0];
     if (file) {
       setImageName(file.name);
+      setImageFile(file);
       const reader = new FileReader();
       reader.onload = (ev) => setImagePreview(ev.target.result);
       reader.readAsDataURL(file);
     } else {
       setImagePreview(null);
       setImageName('');
+      setImageFile(null);
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+    setSuccess('');
+    setCategoryError('');
+    setSupplierError('');
+
+    if (!category) {
+      setCategoryError('Category is required.');
+      return;
+    }
+
+    if (!supplier) {
+      setSupplierError('Supplier is required.');
+      return;
+    }
+
+    const token = localStorage.getItem('token');
+    if (!token) {
+      localStorage.removeItem('user');
+      window.location.assign('/');
+      return;
+    }
+
+    const formData = new FormData(formRef.current);
+    let image_path = '';
+    if (imageFile) {
+      // Upload image to backend first
+      const imgForm = new FormData();
+      imgForm.append('image', imageFile);
+      try {
+        const imgResp = await fetch('/api/upload/item-image', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}` },
+          body: imgForm,
+        });
+        const imgData = await imgResp.json().catch(() => ({}));
+        if (imgResp.ok && imgData.image_path) {
+          image_path = imgData.image_path;
+        } else {
+          setError(imgData?.error || 'Failed to upload image.');
+          setLoading(false);
+          return;
+        }
+      } catch {
+        setError('Network error during image upload.');
+        setLoading(false);
+        return;
+      }
+    }
+    const payload = {
+      item_code: String(formData.get('item_code') || '').trim(),
+      barcode: String(formData.get('barcode') || '').trim(),
+      item_name: String(formData.get('item_name') || '').trim(),
+      item_categories_id: Number(category),
+      suppliers_id: Number(supplier),
+      quantity: Number(formData.get('quantity')),
+      minimum_qty: Number(formData.get('minimum_qty')),
+      purchase_price: String(formData.get('purchase_price') || '').trim(),
+      retail_price: String(formData.get('retail_price') || '').trim(),
+      wholesale_price: String(formData.get('wholesale_price') || '').trim(),
+      pos_order_no: String(formData.get('pos_order_no') || '').trim(),
+      has_expiry_date: expiryEnabled ? 1 : 0,
+      show_expiry_alert_in: expiryEnabled ? String(formData.get('show_expiry_alert_in') || '').trim() : '',
+      description: String(formData.get('description') || '').trim(),
+      image_path,
+    };
+
+    setLoading(true);
+    try {
+      const resp = await fetch('/api/items', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await resp.json().catch(() => ({}));
+
+      if (resp.status === 401) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        window.location.assign('/');
+        return;
+      }
+
+      if (!resp.ok) {
+        setError(data?.error || 'Failed to save item.');
+        return;
+      }
+
+      setSuccess('Item saved successfully.');
+      formRef.current?.reset();
+      setCategory(null);
+      setSupplier(null);
+      setExpiryEnabled(false);
+      setImagePreview(null);
+      setImageName('');
+      setImageFile(null);
+    } catch {
+      setError('Network error. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -129,7 +287,23 @@ function AddItemPage() {
         </div>
         <div className="px-6 lg:px-12">
           <div className="flex flex-col flex-grow h-full p-6 border-2 rounded-lg">
-            <form id="addItemForm" method="POST" action="#" encType="multipart/form-data">
+            {loading && (
+              <div className="mb-4 text-sm text-gray-700">Loading...</div>
+            )}
+
+            {error && (
+              <div className="mb-4 rounded-lg border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700">
+                {error}
+              </div>
+            )}
+
+            {success && (
+              <div className="mb-4 rounded-lg border border-green-300 bg-green-50 px-4 py-3 text-sm text-green-700">
+                {success}
+              </div>
+            )}
+
+            <form ref={formRef} id="addItemForm" method="POST" action="#" encType="multipart/form-data" onSubmit={handleSubmit}>
               <div className="grid gap-6 mb-6 md:grid-cols-4">
                 <div>
                   <label htmlFor="item_code" className="block mb-2 text-sm font-medium text-black ">Item Code <span className="text-gray-500">(Optional)</span></label>
