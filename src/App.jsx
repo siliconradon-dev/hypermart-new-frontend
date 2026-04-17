@@ -4,6 +4,8 @@ import ReturnListView from './pages/sales/return_list_view/ReturnListView';
 import React from 'react';
 import { Navigate, Route, Routes, useNavigate } from 'react-router-dom';
 
+import RequireAuth from './components/RequireAuth';
+
 import Home from './pages/Home';
 // Dashboard and Main Panel
 import Dashboard from './pages/Dashboard';
@@ -114,7 +116,32 @@ import PosMachines from './pages/admin/pos_machines/PosMachines';
 function App() {
   const navigate = useNavigate();
 
-  const token = localStorage.getItem('token');
+  const getValidToken = () => {
+    const token = localStorage.getItem('token');
+    if (!token || typeof token !== 'string') return null;
+
+    const parts = token.split('.');
+    if (parts.length !== 3) return null;
+
+    try {
+      const payloadJson = atob(parts[1].replace(/-/g, '+').replace(/_/g, '/'));
+      const payload = JSON.parse(payloadJson);
+      if (payload?.exp === undefined || payload?.exp === null) return token;
+
+      const nowSec = Math.floor(Date.now() / 1000);
+      if (Number(payload.exp) <= nowSec) return null;
+      return token;
+    } catch {
+      return null;
+    }
+  };
+
+  const token = getValidToken();
+  if (!token) {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+  }
+
   let user = null;
   try {
     user = JSON.parse(localStorage.getItem('user') || 'null');
@@ -133,8 +160,8 @@ function App() {
         <Route
           path="/dashboard"
           element={
-            token ? (
-              Number(user?.status_id ?? 1) === 0 ? (
+            <RequireAuth>
+              {Number(user?.status_id ?? 1) === 0 ? (
                 <Navigate to="/dashboard/dashboard" replace />
               ) : (
                 <Dashboard
@@ -155,129 +182,135 @@ function App() {
                   onOpenStockReport={() => navigate('reports/stock_report')}
                   onOpenSettings={() => navigate('/settings/settings')}
                 />
-              )
-            ) : (
-              <Navigate to="/" replace />
-            )
+              )}
+            </RequireAuth>
           }
         />
           {/* Dashboard */}
         <Route
           path="/dashboard/dashboard"
-          element={token ? <DashbordDashboard onBackToMain={goToMainPanel} /> : <Navigate to="/" replace />}
+          element={
+            <RequireAuth>
+              <DashbordDashboard onBackToMain={goToMainPanel} />
+            </RequireAuth>
+          }
         />
           {/* Sales */}
-        <Route path="/sales/billing" element={<Billing onBackToMain={goToMainPanel} />} />
-        <Route path="/sales/sales" element={<SalesPage onBackToMain={goToMainPanel} />} />
-        <Route path="/sales/salesItems" element={<SalesItem />} />
-        <Route path="/sales/sales_item" element={<SalesItem />} />
-        <Route path="/sales/return_list_view" element={<ReturnListView />} />
-        <Route path="/sales/payment_details" element={<PaymentDetails />} />
+        <Route path="/sales/billing" element={<RequireAuth><Billing onBackToMain={goToMainPanel} /></RequireAuth>} />
+        <Route path="/sales/sales" element={<RequireAuth><SalesPage onBackToMain={goToMainPanel} /></RequireAuth>} />
+        <Route path="/sales/salesItems" element={<RequireAuth><SalesItem /></RequireAuth>} />
+        <Route path="/sales/sales_item" element={<RequireAuth><SalesItem /></RequireAuth>} />
+        <Route path="/sales/return_list_view" element={<RequireAuth><ReturnListView /></RequireAuth>} />
+        <Route path="/sales/payment_details" element={<RequireAuth><PaymentDetails /></RequireAuth>} />
 
         {/* Customer Invoice */}
-        <Route path="/sales/customer_invoice" element={<CustomerInvoice />} />
+        <Route path="/sales/customer_invoice" element={<RequireAuth><CustomerInvoice /></RequireAuth>} />
         
           {/* Item Management */}
-        <Route path="/item" element={<ItemPage onBackToMain={goToMainPanel} />} />
-        <Route path="/item/add_item" element={<AddItemPage />} />
-        <Route path="/item/add_category" element={<AddCategoryPage />} />
-        <Route path="/item/edit_item" element={<EditItemPage />} />
-        <Route path="/item/category/edit_category" element={<EditCategory />} />
-        <Route path="/item/item_list" element={<ItemListPage />} />
-        <Route path="/item/category_list" element={<CategoryListPage />} />
-        <Route path="/item/importItem" element={<ImportItem />} />
-        <Route path="/item/generate_qr_code" element={<GenerateQRCode />} />
+        <Route path="/item" element={<RequireAuth><ItemPage onBackToMain={goToMainPanel} /></RequireAuth>} />
+        <Route path="/item/add_item" element={<RequireAuth><AddItemPage /></RequireAuth>} />
+        <Route path="/item/add_category" element={<RequireAuth><AddCategoryPage /></RequireAuth>} />
+        <Route path="/item/edit_item" element={<RequireAuth><EditItemPage /></RequireAuth>} />
+        <Route path="/item/category/edit_category" element={<RequireAuth><EditCategory /></RequireAuth>} />
+        <Route path="/item/item_list" element={<RequireAuth><ItemListPage /></RequireAuth>} />
+        <Route path="/item/category_list" element={<RequireAuth><CategoryListPage /></RequireAuth>} />
+        <Route path="/item/importItem" element={<RequireAuth><ImportItem /></RequireAuth>} />
+        <Route path="/item/generate_qr_code" element={<RequireAuth><GenerateQRCode /></RequireAuth>} />
         <Route path="/item/genarateCode" element={<Navigate to="/item/generate_qr_code" replace />} />
-        <Route path="/item/export_panel" element={<ExportPanel />} />
+        <Route path="/item/export_panel" element={<RequireAuth><ExportPanel /></RequireAuth>} />
 
           {/* Stock Management */}
-        <Route path="/stock/stock" element={<Stock onBackToMain={goToMainPanel} />} />
-        <Route path="/stock/update_stock" element={<UpdateStock onBackToMain={goToMainPanel} />} />
-        <Route path="/stock/view_related_stock" element={<ViewRelatedStock onBackToMain={goToMainPanel} />} />
+        <Route path="/stock/stock" element={<RequireAuth><Stock onBackToMain={goToMainPanel} /></RequireAuth>} />
+        <Route path="/stock/update_stock" element={<RequireAuth><UpdateStock onBackToMain={goToMainPanel} /></RequireAuth>} />
+        <Route path="/stock/view_related_stock" element={<RequireAuth><ViewRelatedStock onBackToMain={goToMainPanel} /></RequireAuth>} />
         
-        <Route path="sales/due_amount" element={<DueAmount onBackToMain={goToMainPanel} />} />
+        <Route path="sales/due_amount" element={<RequireAuth><DueAmount onBackToMain={goToMainPanel} /></RequireAuth>} />
 
           {/* User Management */}
-        <Route path="/users/users" element={<UsersPage onBackToMain={goToMainPanel} />} />
-        <Route path="/users/add_users" element={<AddUsers onBackToMain={goToMainPanel} />} />
-        <Route path="/users/edit_users" element={<EditUsers onBackToMain={goToMainPanel} />} />
-        <Route path="/users/user_list" element={<UserList onBackToMain={goToMainPanel} />} />
-        <Route path="/users/role_list" element={<RoleList onBackToMain={goToMainPanel} />} />
-        <Route path="/users/add_role" element={<AddRole onBackToMain={goToMainPanel} />} />
-        <Route path="/users/edit_role" element={<EditRole onBackToMain={goToMainPanel} />} />
-        <Route path="/users/permission_list" element={<PermissionList onBackToMain={goToMainPanel} />} />
-        <Route path="/users/add_permission" element={<AddPermission onBackToMain={goToMainPanel} />} />
-        <Route path="/users/edit_permission" element={<EditPermission onBackToMain={goToMainPanel} />} />
+        <Route path="/users/users" element={<RequireAuth><UsersPage onBackToMain={goToMainPanel} /></RequireAuth>} />
+        <Route path="/users/add_users" element={<RequireAuth><AddUsers onBackToMain={goToMainPanel} /></RequireAuth>} />
+        <Route path="/users/edit_users" element={<RequireAuth><EditUsers onBackToMain={goToMainPanel} /></RequireAuth>} />
+        <Route path="/users/user_list" element={<RequireAuth><UserList onBackToMain={goToMainPanel} /></RequireAuth>} />
+        <Route path="/users/role_list" element={<RequireAuth><RoleList onBackToMain={goToMainPanel} /></RequireAuth>} />
+        <Route path="/users/add_role" element={<RequireAuth><AddRole onBackToMain={goToMainPanel} /></RequireAuth>} />
+        <Route path="/users/edit_role" element={<RequireAuth><EditRole onBackToMain={goToMainPanel} /></RequireAuth>} />
+        <Route path="/users/permission_list" element={<RequireAuth><PermissionList onBackToMain={goToMainPanel} /></RequireAuth>} />
+        <Route path="/users/add_permission" element={<RequireAuth><AddPermission onBackToMain={goToMainPanel} /></RequireAuth>} />
+        <Route path="/users/edit_permission" element={<RequireAuth><EditPermission onBackToMain={goToMainPanel} /></RequireAuth>} />
 
             {/* Customer Management */}
-        <Route path="/customers/customers" element={<CustomersPage onBackToMain={goToMainPanel} />} />
-        <Route path="/customers/add_customer" element={<AddCustomer onBackToMain={goToMainPanel} />} />
-        <Route path="/customers/updateCustomer/" element={<EditCustomer onBackToMain={goToMainPanel} />} />
-        <Route path="/customers/customer_list" element={<CustomerList onBackToMain={goToMainPanel} />} />
-        <Route path="/customers/transactions" element={<Transactions onBackToMain={goToMainPanel} />} />
-        <Route path="/customers_invoices" element={<CustomerInvoice onBackToMain={goToMainPanel} />} />
-        <Route path="/customers/transactions/history" element={<CustomerTransactionHistory onBackToMain={goToMainPanel} />} />
-        <Route path="/customers/transaction-log" element={<TransactionLog onBackToMain={goToMainPanel} />} />
-        <Route path="/customers/balance-transaction-log" element={<BalanceTransactionLog onBackToMain={goToMainPanel} />} />
+          <Route path="/customers/customers" element={<RequireAuth><CustomersPage onBackToMain={goToMainPanel} /></RequireAuth>} />
+          <Route path="/customers/add_customer" element={<RequireAuth><AddCustomer onBackToMain={goToMainPanel} /></RequireAuth>} />
+          <Route path="/customers/updateCustomer/" element={<RequireAuth><EditCustomer onBackToMain={goToMainPanel} /></RequireAuth>} />
+          <Route path="/customers/customer_list" element={<RequireAuth><CustomerList onBackToMain={goToMainPanel} /></RequireAuth>} />
+          <Route path="/customers/transactions" element={<RequireAuth><Transactions onBackToMain={goToMainPanel} /></RequireAuth>} />
+          <Route path="/customers_invoices" element={<RequireAuth><CustomerInvoice onBackToMain={goToMainPanel} /></RequireAuth>} />
+          <Route path="/customers/transactions/history" element={<RequireAuth><CustomerTransactionHistory onBackToMain={goToMainPanel} /></RequireAuth>} />
+          <Route path="/customers/transaction-log" element={<RequireAuth><TransactionLog onBackToMain={goToMainPanel} /></RequireAuth>} />
+          <Route path="/customers/balance-transaction-log" element={<RequireAuth><BalanceTransactionLog onBackToMain={goToMainPanel} /></RequireAuth>} />
 
         {/* Cheques */}
-        <Route path="/cheques" element={<Cheques onBackToMain={goToMainPanel} />} />
-        <Route path="/cheques/create" element={<CreateCheques onBackToMain={goToMainPanel} />} />
+        <Route path="/cheques" element={<RequireAuth><Cheques onBackToMain={goToMainPanel} /></RequireAuth>} />
+        <Route path="/cheques/create" element={<RequireAuth><CreateCheques onBackToMain={goToMainPanel} /></RequireAuth>} />
         
         {/* Supplier Management */}
-        <Route path="/suppliers/suppliers" element={<SuppliersPage onBackToMain={goToMainPanel} />} />
-        <Route path="/suppliers/add_supplier" element={<AddSupplier onBackToMain={goToMainPanel} />} />
-        <Route path="/suppliers/supplier_list" element={<SupplierList onBackToMain={goToMainPanel} />} />
-        <Route path="/suppliers/supplier_invoice" element={<SupplierInvoice onBackToMain={goToMainPanel} />} />
-        <Route path="/suppliers/supplier_cheque" element={<SupplierCheque onBackToMain={goToMainPanel} />} />
-        <Route path="/suppliers/transactions" element={<TransactionHistory onBackToMain={goToMainPanel} />} />
-        <Route path="/suppliers/edit_supplier" element={<EditSupplier onBackToMain={goToMainPanel} />} />
-        <Route path="/suppliers/transaction_log" element={<SupplierTransactionLog onBackToMain={goToMainPanel} />} />
-        <Route path="/suppliers/cheques" element={<ChequeList onBackToMain={goToMainPanel} />} />
-        <Route path="/suppliers/add_invoice" element={<AddNewInvoice onBackToMain={goToMainPanel} />} />
-        <Route path="/suppliers/invoice_report" element={<InvoiceReport onBackToMain={goToMainPanel} />} />
+        <Route path="/suppliers/suppliers" element={<RequireAuth><SuppliersPage onBackToMain={goToMainPanel} /></RequireAuth>} />
+        <Route path="/suppliers/add_supplier" element={<RequireAuth><AddSupplier onBackToMain={goToMainPanel} /></RequireAuth>} />
+        <Route path="/suppliers/supplier_list" element={<RequireAuth><SupplierList onBackToMain={goToMainPanel} /></RequireAuth>} />
+        <Route path="/suppliers/supplier_invoice" element={<RequireAuth><SupplierInvoice onBackToMain={goToMainPanel} /></RequireAuth>} />
+        <Route path="/suppliers/supplier_cheque" element={<RequireAuth><SupplierCheque onBackToMain={goToMainPanel} /></RequireAuth>} />
+        <Route path="/suppliers/transactions" element={<RequireAuth><TransactionHistory onBackToMain={goToMainPanel} /></RequireAuth>} />
+        <Route path="/suppliers/edit_supplier" element={<RequireAuth><EditSupplier onBackToMain={goToMainPanel} /></RequireAuth>} />
+        <Route path="/suppliers/transaction_log" element={<RequireAuth><SupplierTransactionLog onBackToMain={goToMainPanel} /></RequireAuth>} />
+        <Route path="/suppliers/cheques" element={<RequireAuth><ChequeList onBackToMain={goToMainPanel} /></RequireAuth>} />
+        <Route path="/suppliers/add_invoice" element={<RequireAuth><AddNewInvoice onBackToMain={goToMainPanel} /></RequireAuth>} />
+        <Route path="/suppliers/invoice_report" element={<RequireAuth><InvoiceReport onBackToMain={goToMainPanel} /></RequireAuth>} />
         {/* Expenses */}
-        <Route path="/expenses/expenses" element={<ExpensesPage onBackToMain={goToMainPanel} />} />
+        <Route path="/expenses/expenses" element={<RequireAuth><ExpensesPage onBackToMain={goToMainPanel} /></RequireAuth>} />
         <Route
           path="/expenses/addExpense"
           element={
-            <React.Suspense fallback={null}>
-              <AddExpense onBackToMain={goToMainPanel} />
-            </React.Suspense>
+            <RequireAuth>
+              <React.Suspense fallback={null}>
+                <AddExpense onBackToMain={goToMainPanel} />
+              </React.Suspense>
+            </RequireAuth>
           }
         />
         <Route
           path="/expenses/addExpenseCategory"
           element={
-            <React.Suspense fallback={null}>
-              <AddExpenseCategory onBackToMain={goToMainPanel} />
-            </React.Suspense>
+            <RequireAuth>
+              <React.Suspense fallback={null}>
+                <AddExpenseCategory onBackToMain={goToMainPanel} />
+              </React.Suspense>
+            </RequireAuth>
           }
         />
-        <Route path="/expenses/expensesList" element={<ExpensesList onBackToMain={goToMainPanel} />} />
-        <Route path="/expenses/expensesCategoryList" element={<ExpensesCategoryList onBackToMain={goToMainPanel} />} />
+        <Route path="/expenses/expensesList" element={<RequireAuth><ExpensesList onBackToMain={goToMainPanel} /></RequireAuth>} />
+        <Route path="/expenses/expensesCategoryList" element={<RequireAuth><ExpensesCategoryList onBackToMain={goToMainPanel} /></RequireAuth>} />
         {/* Finance Management */}
-        <Route path="/finance" element={<FinancePage onBackToMain={goToMainPanel} />} />
-        <Route path="/finance/banks" element={<Banks onBackToMain={goToMainPanel} />} />
-        <Route path="/finance/accounts" element={<Accounts onBackToMain={goToMainPanel} />} />
-        <Route path="/finance/transactions" element={<TransactionsFinance onBackToMain={goToMainPanel} />} />
-        <Route path="/finance/ledger" element={<Ledger onBackToMain={goToMainPanel} />} />
-        <Route path="/finance/payment-modes" element={<PaymentModes onBackToMain={goToMainPanel} />} />
-        <Route path="/finance/payment-machines" element={<PaymentMachines onBackToMain={goToMainPanel} />} />
-        <Route path="/reports/reports" element={<ReportsPage onBackToMain={goToMainPanel} />} />
-        <Route path="/reports/stockReports" element={<StockReport onBackToMain={goToMainPanel} />} />
-        <Route path="/reports/stock_report" element={<StockReport onBackToMain={goToMainPanel} />} />
-        <Route path="/reports/stockLog" element={<StockLog onBackToMain={goToMainPanel} />} />
-        <Route path="/reports/loyaltyPointReport" element={<LoyaltyPointReport onBackToMain={goToMainPanel} />} />
-        <Route path="/reports/customSummary" element={<CustomSummary onBackToMain={goToMainPanel} />} />
-        <Route path="/reports/dailySummary" element={<DailySummary onBackToMain={goToMainPanel} />} />
-        <Route path="/reports/monthlySummary" element={<MonthlySummary onBackToMain={goToMainPanel} />} />
-        <Route path="/reports/yearlySummary" element={<YearlySummary onBackToMain={goToMainPanel} />} />
-        <Route path="/settings/settings" element={<SettingsPage onBackToMain={goToMainPanel} />} />
-        <Route path="/settings/siteSettings" element={<SiteSettings onBackToMain={goToMainPanel} />} />
-        <Route path="/settings/changePassword" element={<ChangePassword onBackToMain={goToMainPanel} />} />
-        <Route path="/settings/changeSite" element={<ChangeSite onBackToMain={goToMainPanel} />} />
-        <Route path="/admin/pos_machines" element={<PosMachines onBackToMain={goToMainPanel} />} />
+        <Route path="/finance" element={<RequireAuth><FinancePage onBackToMain={goToMainPanel} /></RequireAuth>} />
+        <Route path="/finance/banks" element={<RequireAuth><Banks onBackToMain={goToMainPanel} /></RequireAuth>} />
+        <Route path="/finance/accounts" element={<RequireAuth><Accounts onBackToMain={goToMainPanel} /></RequireAuth>} />
+        <Route path="/finance/transactions" element={<RequireAuth><TransactionsFinance onBackToMain={goToMainPanel} /></RequireAuth>} />
+        <Route path="/finance/ledger" element={<RequireAuth><Ledger onBackToMain={goToMainPanel} /></RequireAuth>} />
+        <Route path="/finance/payment-modes" element={<RequireAuth><PaymentModes onBackToMain={goToMainPanel} /></RequireAuth>} />
+        <Route path="/finance/payment-machines" element={<RequireAuth><PaymentMachines onBackToMain={goToMainPanel} /></RequireAuth>} />
+        <Route path="/reports/reports" element={<RequireAuth><ReportsPage onBackToMain={goToMainPanel} /></RequireAuth>} />
+        <Route path="/reports/stockReports" element={<RequireAuth><StockReport onBackToMain={goToMainPanel} /></RequireAuth>} />
+        <Route path="/reports/stock_report" element={<RequireAuth><StockReport onBackToMain={goToMainPanel} /></RequireAuth>} />
+        <Route path="/reports/stockLog" element={<RequireAuth><StockLog onBackToMain={goToMainPanel} /></RequireAuth>} />
+        <Route path="/reports/loyaltyPointReport" element={<RequireAuth><LoyaltyPointReport onBackToMain={goToMainPanel} /></RequireAuth>} />
+        <Route path="/reports/customSummary" element={<RequireAuth><CustomSummary onBackToMain={goToMainPanel} /></RequireAuth>} />
+        <Route path="/reports/dailySummary" element={<RequireAuth><DailySummary onBackToMain={goToMainPanel} /></RequireAuth>} />
+        <Route path="/reports/monthlySummary" element={<RequireAuth><MonthlySummary onBackToMain={goToMainPanel} /></RequireAuth>} />
+        <Route path="/reports/yearlySummary" element={<RequireAuth><YearlySummary onBackToMain={goToMainPanel} /></RequireAuth>} />
+        <Route path="/settings/settings" element={<RequireAuth><SettingsPage onBackToMain={goToMainPanel} /></RequireAuth>} />
+        <Route path="/settings/siteSettings" element={<RequireAuth><SiteSettings onBackToMain={goToMainPanel} /></RequireAuth>} />
+        <Route path="/settings/changePassword" element={<RequireAuth><ChangePassword onBackToMain={goToMainPanel} /></RequireAuth>} />
+        <Route path="/settings/changeSite" element={<RequireAuth><ChangeSite onBackToMain={goToMainPanel} /></RequireAuth>} />
+        <Route path="/admin/pos_machines" element={<RequireAuth><PosMachines onBackToMain={goToMainPanel} /></RequireAuth>} />
 
         <Route path="*" element={<Navigate to={token ? '/dashboard' : '/'} replace />} />
       </Routes>

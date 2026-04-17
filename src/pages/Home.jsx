@@ -16,6 +16,23 @@ const Home = () => {
   useEffect(() => {
     const token = localStorage.getItem('token');
 
+    const isJwtExpired = (token) => {
+      if (!token || typeof token !== 'string') return true;
+      const parts = token.split('.');
+      if (parts.length !== 3) return true;
+
+      try {
+        const payloadJson = atob(parts[1].replace(/-/g, '+').replace(/_/g, '/'));
+        const payload = JSON.parse(payloadJson);
+        if (payload?.exp === undefined || payload?.exp === null) return false;
+
+        const nowSec = Math.floor(Date.now() / 1000);
+        return Number(payload.exp) <= nowSec;
+      } catch {
+        return true;
+      }
+    };
+
     let user = null;
     try {
       user = JSON.parse(localStorage.getItem('user') || 'null');
@@ -23,9 +40,13 @@ const Home = () => {
       user = null;
     }
 
-    if (token) {
+    if (token && !isJwtExpired(token)) {
       const isDeactivated = Number(user?.status_id ?? 1) === 0;
       navigate(isDeactivated ? '/dashboard/dashboard' : '/dashboard', { replace: true });
+    } else {
+      // Clear stale/invalid tokens so the app doesn't "auto-login" incorrectly.
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
     }
   }, [navigate]);
 
