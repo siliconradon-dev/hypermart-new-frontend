@@ -32,21 +32,67 @@ const AddCustomer = () => {
     setIsCompany((current) => !current);
   };
 
-  const handleSubmit = (event) => {
+
+  const handleSubmit = async (event) => {
     event.preventDefault();
     setLoading(true);
     setErrorMessage('');
     setSuccessMessage('');
 
-    window.setTimeout(() => {
-      hideLoading();
-      resetForm();
-      setSuccessMessage('Operation Successful');
+    const form = formRef.current;
+    const formData = new FormData(form);
 
-      window.setTimeout(() => {
-        setSuccessMessage('');
-      }, 4000);
-    }, 900);
+    // Map frontend field names to backend expected keys
+    const payload = {
+      customer_name: formData.get('name'),
+      is_company: isCompany ? 1 : 0,
+      vat_number: formData.get('vat_number'),
+      contact_number: formData.get('Mobile_Number'),
+      contact_number_2: formData.get('contact_number_2'),
+      email: formData.get('email'),
+      gender: !isCompany ? formData.get('gender') : '',
+      dob: !isCompany ? formData.get('dob') : '',
+      nic: !isCompany ? formData.get('nic') : '',
+      city_name: formData.get('city_name'),
+      address_line_1: formData.get('addl1'),
+      address_line_2: formData.get('addl2'),
+      due_amount: formData.get('due'),
+      opening_balance: formData.get('opening_balance'),
+      opening_balance_type: formData.get('opening_balance_type'),
+      credit_limit: formData.get('credit_limit'),
+    };
+
+    // Handle VAT document file upload (if any)
+    const vatFile = formData.get('vat_document');
+    if (vatFile && vatFile.size > 0) {
+      // For now, just store file name; backend can be extended to handle file upload
+      payload.vat_document = vatFile.name;
+    }
+
+    try {
+      // Get JWT token from localStorage
+      const token = localStorage.getItem('token');
+      const res = await fetch('http://localhost:3000/api/customers', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      hideLoading();
+      if (res.ok && data.success) {
+        resetForm();
+        setSuccessMessage('Customer added successfully!');
+        window.setTimeout(() => setSuccessMessage(''), 4000);
+      } else {
+        setErrorMessage(data.error || 'Failed to add customer.');
+      }
+    } catch (err) {
+      hideLoading();
+      setErrorMessage('Network or server error.');
+    }
   };
 
   return (
@@ -93,8 +139,7 @@ const AddCustomer = () => {
           </div>
 
           <div className="p-6 pt-0 md:px-12">
-            <form ref={formRef} action="https://hypermart-new.onlinesytems.com/customers/store" method="POST" id="addCustomerForm" onSubmit={handleSubmit}>
-              <input type="hidden" name="_token" value="lV3JlfzCkgPECFRBCdzhJF9SqMhIjHSHrPuXtcvI" autoComplete="off" />
+            <form ref={formRef} id="addCustomerForm" autoComplete="off" onSubmit={handleSubmit}>
 
               <div className="flex flex-col flex-grow h-full p-6 border-2 rounded-lg bg-white">
                 <div className="grid gap-6 mb-6">
