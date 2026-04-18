@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import Layout from '../../../components/Layout';
 import './AddRole.css';
 import { useNavigate } from 'react-router-dom';
@@ -7,19 +7,65 @@ import { useNavigate } from 'react-router-dom';
 const AddRole = () => {
   const navigate = useNavigate();
 
+
+  // State for form, loading, and error
+  const [role, setRole] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
   // Handler for cancel button
   const handleCancel = () => {
     navigate('/users/users');
   };
 
+  // Handler for form submit
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+    if (!role.trim()) {
+      setError('Role name is required.');
+      return;
+    }
+    setLoading(true);
+    const token = localStorage.getItem('token');
+    if (!token) {
+      setError('You must be logged in.');
+      setLoading(false);
+      return;
+    }
+    try {
+      const res = await fetch('/api/users/roles', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ role_name: role.trim() }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        setError(data.error || 'Failed to add role.');
+      } else {
+        setRole('');
+        navigate('/users/users');
+      }
+    } catch (err) {
+      setError('Network error.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <Layout>
       {/* Loading Overlay (hidden by default, can be implemented with state if needed) */}
-      <div id="loading-overlay" className="loading-overlay" style={{ display: 'none' }}>
-        <div className="text-center">
-          <div className="spinner"></div>
+      {loading && (
+        <div id="loading-overlay" className="loading-overlay">
+          <div className="text-center">
+            <div className="spinner"></div>
+          </div>
         </div>
-      </div>
+      )}
 
       <div className="flex flex-col flex-grow">
         {/* Breadcrumbs */}
@@ -56,17 +102,28 @@ const AddRole = () => {
         {/* Main panel */}
         <div className="p-6">
           <div className="flex flex-col flex-grow h-full p-6 border-2 rounded-lg bg-white">
-            <form className="w-full">
+            <form className="w-full" onSubmit={handleSubmit}>
               <div className="grid gap-6 mb-6 md:grid-cols-1">
                 <div>
                   <label htmlFor="role" className="block mb-2 text-sm font-medium text-black ">Role</label>
-                  <input id="role" name="role" type="text" className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 " placeholder="Enter role" required />
+                  <input
+                    id="role"
+                    name="role"
+                    type="text"
+                    className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 "
+                    placeholder="Enter role"
+                    required
+                    value={role}
+                    onChange={e => setRole(e.target.value)}
+                    disabled={loading}
+                  />
                 </div>
               </div>
+              {error && <div className="text-red-600 text-center mb-4">{error}</div>}
               <div className="flex items-center justify-center w-full gap-4 max-sm:flex-col max-sm:p-0">
-                <button type="submit" className="py-3 px-6 bg-[#3c8c2c] text-white rounded-lg max-sm:py-1 max-sm:px-3 max-sm:w-full">Add</button>
-                <button type="reset" className="px-6 py-3 text-white bg-[#3c8c2c] rounded-lg max-sm:py-1 max-sm:px-3 max-sm:w-full">Reset</button>
-                <button type="button" className="px-6 py-3 text-white bg-red-600 rounded-lg max-sm:py-1 max-sm:px-3 max-sm:w-full" onClick={handleCancel}>Cancel</button>
+                <button type="submit" className="py-3 px-6 bg-[#3c8c2c] text-white rounded-lg max-sm:py-1 max-sm:px-3 max-sm:w-full" disabled={loading}>Add</button>
+                <button type="reset" className="px-6 py-3 text-white bg-[#3c8c2c] rounded-lg max-sm:py-1 max-sm:px-3 max-sm:w-full" disabled={loading} onClick={() => setRole('')}>Reset</button>
+                <button type="button" className="px-6 py-3 text-white bg-red-600 rounded-lg max-sm:py-1 max-sm:px-3 max-sm:w-full" onClick={handleCancel} disabled={loading}>Cancel</button>
               </div>
             </form>
           </div>
