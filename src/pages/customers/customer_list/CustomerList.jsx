@@ -8,7 +8,8 @@ import { useNavigate } from 'react-router-dom';
 
 // Backend-to-frontend field mapping helper
 const mapBackendCustomer = (c) => ({
-  id: c.id,
+  ...c,
+  id: c.id ?? c.customer_id ?? c.rowid,
   customerCode: c.customer_code,
   customerName: c.customer_name,
   mobileNumber: c.contact_number,
@@ -16,7 +17,7 @@ const mapBackendCustomer = (c) => ({
   email: c.email,
   dueAmount: c.due_amount,
   userId: c.user_id,
-  cityId: c.city_id,
+  cityId: c.cities_id,
   statusId: c.status_id,
   cityName: c.city_name,
   active: c.status_id === 1,
@@ -175,6 +176,7 @@ const CustomerList = () => {
 
   const handleEditButton = (e, customerId) => {
     e.preventDefault();
+    if (!customerId || customerId === 'null' || customerId === 'undefined') return;
     navigate(`/customers/updateCustomer/${customerId}`);
   };
 

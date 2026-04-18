@@ -1,33 +1,107 @@
 
-import React, { useState, useRef } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import './EditCustomer.css';
 
 const initialState = {
-  name: 'Customer',
+  name: '',
   isCompany: false,
   vatNumber: '',
   vatDocument: null,
-  Mobile_Number: '1234567890',
+  vatDocumentName: '',
+  Mobile_Number: '',
   contact_number_2: '',
-  city: '1',
-  email: 'aa@gmail.com',
+  city: '',
+  email: '',
   gender: '',
   dob: '',
   nic: '',
   city_name: '',
-  addl1: 'bnnnnn',
-  addl2: 'nnnnnn',
-  due: '534.00',
-  opening_balance: '0.00',
-  credit_limit: '0.00',
+  addl1: '',
+  addl2: '',
+  due: '',
+  opening_balance: '',
+  opening_balance_type: 'credit',
+  current_balance: '',
+  credit_limit: '',
 };
 
 const EditCustomer = () => {
+  const navigate = useNavigate();
+  const { id } = useParams();
+
   const [form, setForm] = useState(initialState);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
   const [showCompanyFields, setShowCompanyFields] = useState(false);
   const vatDocInput = useRef();
+
+  useEffect(() => {
+    if (!id || id === 'null' || id === 'undefined') {
+      setForm(initialState);
+      setShowCompanyFields(false);
+      return;
+    }
+
+    const fetchCustomer = async () => {
+      setLoading(true);
+      setErrorMessage('');
+      try {
+        const token = localStorage.getItem('token');
+        const res = await fetch(`http://localhost:3000/api/customers/${id}`, {
+          headers: {
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data?.success || !data?.customer) {
+          setForm(initialState);
+          setShowCompanyFields(false);
+          setErrorMessage(data?.error || data?.message || `Failed to load customer (HTTP ${res.status}).`);
+          return;
+        }
+
+        const c = data.customer;
+        const next = {
+          ...initialState,
+          name: c.customer_name || '',
+          isCompany: Number(c.is_company) === 1,
+          vatNumber: c.vat_number || '',
+          vatDocument: null,
+          vatDocumentName: c.vat_document || '',
+          Mobile_Number: c.contact_number || '',
+          contact_number_2: c.contact_number_2 || '',
+          city: (c.cities_id ?? c.city_id) ? String(c.cities_id ?? c.city_id) : '',
+          email: c.email || '',
+          gender: c.gender || '',
+          dob: c.dob || '',
+          nic: c.nic || '',
+          city_name: c.city_name || '',
+          addl1: c.address_line_1 || '',
+          addl2: c.address_line_2 || '',
+          due: c.due_amount ?? '',
+          opening_balance: c.opening_balance ?? '',
+          opening_balance_type: c.opening_balance_type || 'credit',
+          current_balance: c.current_balance ?? '',
+          credit_limit: c.credit_limit ?? '',
+        };
+
+        setForm(next);
+        setShowCompanyFields(next.isCompany);
+        if (vatDocInput.current) vatDocInput.current.value = '';
+      } catch {
+        setForm(initialState);
+        setShowCompanyFields(false);
+        setErrorMessage('Network or server error.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCustomer();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
 
   // Handle input changes
   const handleChange = (e) => {
@@ -44,20 +118,76 @@ const EditCustomer = () => {
 
   // Reset form to initial state
   const handleReset = () => {
-    setForm(initialState);
+    setForm((prev) => ({
+      ...initialState,
+      vatDocumentName: prev.vatDocumentName || '',
+    }));
     setShowCompanyFields(false);
+    setErrorMessage('');
     if (vatDocInput.current) vatDocInput.current.value = '';
   };
 
   // Handle form submit
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!id) {
+      setErrorMessage('Missing customer id in URL.');
+      return;
+    }
+
     setLoading(true);
-    setTimeout(() => {
+    setSuccess(false);
+    setErrorMessage('');
+
+    const payload = {
+      customer_name: form.name,
+      is_company: form.isCompany ? 1 : 0,
+      vat_number: form.vatNumber,
+      vat_document: form.vatDocument ? form.vatDocument.name : (form.vatDocumentName || ''),
+      contact_number: form.Mobile_Number,
+      contact_number_2: form.contact_number_2,
+      email: form.email,
+      gender: form.isCompany ? '' : form.gender,
+      dob: form.isCompany ? '' : form.dob,
+      nic: form.isCompany ? '' : form.nic,
+      cities_id: form.city ? Number(form.city) : null,
+      city_name: form.city_name,
+      address_line_1: form.addl1,
+      address_line_2: form.addl2,
+      due_amount: form.due,
+      opening_balance: form.opening_balance,
+      opening_balance_type: form.opening_balance_type,
+      credit_limit: form.credit_limit,
+    };
+
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`http://localhost:3000/api/customers/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data?.success) {
+        setSuccess(true);
+        setForm((prev) => ({
+          ...prev,
+          vatDocumentName: prev.vatDocument ? prev.vatDocument.name : prev.vatDocumentName,
+          vatDocument: null,
+        }));
+        if (vatDocInput.current) vatDocInput.current.value = '';
+        window.setTimeout(() => setSuccess(false), 4000);
+      } else {
+        setErrorMessage(data?.error || data?.message || `Failed to update customer (HTTP ${res.status}).`);
+      }
+    } catch {
+      setErrorMessage('Network or server error.');
+    } finally {
       setLoading(false);
-      setSuccess(true);
-      setTimeout(() => setSuccess(false), 4000);
-    }, 1200);
+    }
   };
 
   // Move city_name field for company
@@ -117,8 +247,16 @@ const EditCustomer = () => {
       {success && (
         <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 flex items-center bg-green-500 text-white px-6 py-3 rounded shadow-lg transition-all">
           <span className="mr-2"><i className="fas fa-check-circle"></i></span>
-          Permission updated successfully!
+          Customer updated successfully!
           <button className="ml-4 text-white" onClick={() => setSuccess(false)}>&times;</button>
+        </div>
+      )}
+
+      {errorMessage && (
+        <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 flex items-center bg-red-600 text-white px-6 py-3 rounded shadow-lg transition-all">
+          <span className="mr-2"><i className="fas fa-times-circle"></i></span>
+          {errorMessage}
+          <button className="ml-4 text-white" onClick={() => setErrorMessage('')}>&times;</button>
         </div>
       )}
 
@@ -192,6 +330,9 @@ const EditCustomer = () => {
                         <input id="vat_document" name="vatDocument" type="file" accept=".pdf,.jpg,.jpeg,.png" ref={vatDocInput} onChange={handleChange}
                           className="block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 focus:outline-none p-2" />
                         <p className="mt-1 text-xs text-gray-500">Accepted formats: PDF, JPG, PNG (Max 2MB) - Leave empty to keep existing document</p>
+                        {form.vatDocumentName ? (
+                          <p className="mt-1 text-xs text-gray-600">Current: {form.vatDocumentName}</p>
+                        ) : null}
                       </div>
                     </div>
                   )}
@@ -222,7 +363,7 @@ const EditCustomer = () => {
                   <select id="city" name="city" value={form.city} onChange={handleChange}
                     className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
                     <option value="">Select city</option>
-                    <option value="1" selected>default</option>
+                    <option value="1">default</option>
                   </select>
                 </div>
               </div>
@@ -309,9 +450,28 @@ const EditCustomer = () => {
                 <div className="grid gap-6 md:grid-cols-2">
                   <div>
                     <label htmlFor="opening_balance" className="block mb-2 text-sm font-semibold text-amber-900">Opening Balance (LKR)</label>
-                    <input id="opening_balance" name="opening_balance" type="number" step="0.01" value={form.opening_balance} disabled
-                      className="bg-gray-100 border-2 border-amber-300 text-gray-900 text-sm rounded-lg focus:ring-amber-500 focus:border-amber-500 block w-full p-2.5"
-                      placeholder="Enter opening balance" />
+                    <div className="flex gap-2">
+                      <select
+                        id="opening_balance_type"
+                        name="opening_balance_type"
+                        value={form.opening_balance_type}
+                        onChange={handleChange}
+                        className="bg-white border-2 border-amber-300 text-gray-900 text-sm rounded-lg focus:ring-amber-500 focus:border-amber-500 p-2.5 w-32"
+                      >
+                        <option value="credit">Credit</option>
+                        <option value="debit">Debit</option>
+                      </select>
+                      <input
+                        id="opening_balance"
+                        name="opening_balance"
+                        type="number"
+                        step="0.01"
+                        value={form.opening_balance}
+                        onChange={handleChange}
+                        className="bg-white border-2 border-amber-300 text-gray-900 text-sm rounded-lg focus:ring-amber-500 focus:border-amber-500 block w-full p-2.5"
+                        placeholder="Enter opening balance"
+                      />
+                    </div>
                     <p className="mt-1 text-xs text-amber-700">
                       <span className="text-green-700">Payable (Debit):</span> Customer has prepaid credit<br />
                       <span className="text-red-700">Receivable (Credit):</span> Customer owes money (reduces credit limit)
@@ -324,7 +484,7 @@ const EditCustomer = () => {
                       placeholder="Enter credit limit" />
                     <p className="mt-1 text-xs text-amber-700">
                       Maximum credit allowed. Set to 0 to disable credit bills.<br />
-                      <span className="font-semibold">Current Balance:</span> Rs. 0.00
+                      <span className="font-semibold">Current Balance:</span> Rs. {Number(form.current_balance || 0).toFixed(2)}
                     </p>
                   </div>
                 </div>
@@ -332,22 +492,19 @@ const EditCustomer = () => {
                   <div className="grid grid-cols-2 gap-4 text-sm md:grid-cols-4">
                     <div>
                       <p className="text-gray-600">Credit Limit:</p>
-                      <p className="font-bold text-blue-600">Rs. 0.00</p>
+                      <p className="font-bold text-blue-600">Rs. {Number(form.credit_limit || 0).toFixed(2)}</p>
                     </div>
                     <div>
-                      <p className="text-gray-600">Effective Limit:</p>
-                      <p className="font-bold text-purple-600">Rs. 0.00</p>
+                      <p className="text-gray-600">Current Balance:</p>
+                      <p className="font-bold text-purple-600">Rs. {Number(form.current_balance || 0).toFixed(2)}</p>
                     </div>
                     <div>
-                      <p className="text-gray-600">Outstanding Debt:</p>
-                      <p className="font-bold text-orange-600 cursor-pointer" title="Unpaid bills: Rs. 0.00 + Balance debt: Rs. 0.00">
-                        Rs. 0.00 <i className="fas fa-question"></i>
-                        <span className="text-xs font-normal text-gray-500 block">(bills + bal. debt)</span>
-                      </p>
+                      <p className="text-gray-600">Due Amount:</p>
+                      <p className="font-bold text-orange-600">Rs. {Number(form.due || 0).toFixed(2)}</p>
                     </div>
                     <div>
                       <p className="text-gray-600">Available Credit:</p>
-                      <p className="font-bold text-red-600">Rs. 0.00</p>
+                      <p className="font-bold text-red-600">Rs. {Math.max(0, Number(form.credit_limit || 0) - Number(form.current_balance || 0)).toFixed(2)}</p>
                     </div>
                   </div>
                 </div>
@@ -357,7 +514,7 @@ const EditCustomer = () => {
               <div className="flex items-center justify-center w-full gap-4 max-sm:flex-col max-sm:p-0">
                 <button type="submit" className="py-3 px-6 bg-[#029ED9] text-white rounded-lg max-sm:py-1 max-sm:px-3 max-sm:w-full">Update</button>
                 <button type="button" className="px-6 py-3 text-white bg-black rounded-lg max-sm:py-1 max-sm:px-3 max-sm:w-full" onClick={handleReset}>Reset</button>
-                <button type="button" className="px-6 py-3 text-white bg-red-600 rounded-lg max-sm:py-1 max-sm:px-3 max-sm:w-full" onClick={() => window.location.href='/customers/customerList'}>Cancel</button>
+                <button type="button" className="px-6 py-3 text-white bg-red-600 rounded-lg max-sm:py-1 max-sm:px-3 max-sm:w-full" onClick={() => navigate('/customers/customer_list')}>Cancel</button>
               </div>
             </form>
           </div>

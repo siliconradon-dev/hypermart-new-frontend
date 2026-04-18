@@ -242,7 +242,8 @@ function App() {
             {/* Customer Management */}
           <Route path="/customers/customers" element={<RequireAuth><CustomersPage onBackToMain={goToMainPanel} /></RequireAuth>} />
           <Route path="/customers/add_customer" element={<RequireAuth><AddCustomer onBackToMain={goToMainPanel} /></RequireAuth>} />
-          <Route path="/customers/updateCustomer/" element={<RequireAuth><EditCustomer onBackToMain={goToMainPanel} /></RequireAuth>} />
+          <Route path="/customers/updateCustomer/" element={<Navigate to="/customers/customer_list" replace />} />
+          <Route path="/customers/updateCustomer/:id" element={<RequireAuth><EditCustomer onBackToMain={goToMainPanel} /></RequireAuth>} />
           <Route path="/customers/customer_list" element={<RequireAuth><CustomerList onBackToMain={goToMainPanel} /></RequireAuth>} />
           <Route path="/customers/transactions" element={<RequireAuth><Transactions onBackToMain={goToMainPanel} /></RequireAuth>} />
           <Route path="/customers_invoices" element={<RequireAuth><CustomerInvoice onBackToMain={goToMainPanel} /></RequireAuth>} />
