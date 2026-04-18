@@ -200,40 +200,42 @@ const SalesItem = () => {
         <div className="flex flex-col px-12 py-5 overflow-y-auto bg-white max-sm:px-6 max-lg:min-h-full">
           <div className="relative h-[500px] overflow-x-auto">
             <table className="w-full text-sm text-left text-gray-500 rtl:text-right">
-              <thead className="text-xs text-white uppercase bg-[#3c8c2c]">
+              <thead className="text-xs text-white uppercase bg-[#3c8c2c] sticky top-0 z-10">
                 <tr>
-                  <th scope="col" className="px-6 py-3 rounded-tl-lg">ID</th>
-                  <th scope="col" className="px-6 py-3">Code</th>
-                  <th scope="col" className="px-6 py-3">Customer Name</th>
-                  <th scope="col" className="px-6 py-3">Contact</th>
-                  <th scope="col" className="px-6 py-3">Total (RS)</th>
-                  <th scope="col" className="px-6 py-3">Recieved Amount (RS)</th>
-                  <th scope="col" className="px-6 py-3">Paid Amount (RS)</th>
-                  <th scope="col" className="px-6 py-3">Status</th>
-                  <th scope="col" className="px-6 py-3">Due Amount (RS)</th>
-                  <th scope="col" className="px-6 py-3">Discount (RS)</th>
-                  <th scope="col" className="px-6 py-3">Created At</th>
-                  <th scope="col" className="px-6 py-3 rounded-tr-lg">Action</th>
+                  <th className="px-6 py-3 rounded-tl-lg">Sale ID</th>
+                  <th className="px-6 py-3">Sales Code</th>
+                  <th className="px-6 py-3">Date</th>
+                  <th className="px-6 py-3">Customer</th>
+                  <th className="px-6 py-3">Contact</th>
+                  <th className="px-6 py-3">Item Code</th>
+                  <th className="px-6 py-3">Item Name</th>
+                  <th className="px-6 py-3">Category</th>
+                  <th className="px-6 py-3">Quantity</th>
+                  <th className="px-6 py-3">Price</th>
+                  <th className="px-6 py-3">Discount</th>
+                  <th className="px-6 py-3">Status</th>
+                  <th className="px-6 py-3 rounded-tr-lg">Action</th>
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
-                  <tr><td colSpan={12} className="text-center py-6">Loading…</td></tr>
+                  <tr><td colSpan={13} className="text-center py-6">Loading…</td></tr>
                 ) : sales.length === 0 ? (
-                  <tr><td colSpan={12} className="text-center py-6">No sales item found</td></tr>
+                  <tr><td colSpan={13} className="text-center py-6">No sales item found</td></tr>
                 ) : sales.map((row, idx) => (
-                  <tr key={row.id} className="text-black bg-white border-2">
-                    <td className="px-6 py-4 font-medium whitespace-nowrap">{row.id}</td>
+                  <tr key={row.sales_item_id || idx} className="text-black bg-white border-2">
+                    <td className="px-6 py-4 font-medium whitespace-nowrap">{row.sale_id}</td>
                     <td className="px-6 py-4">{row.sales_code}</td>
+                    <td className="px-6 py-4">{row.created_at}</td>
                     <td className="px-6 py-4">{row.customer_name}</td>
                     <td className="px-6 py-4">{row.contact_number}</td>
-                    <td className="px-6 py-4">{row.total}</td>
-                    <td className="px-6 py-4">{row.received_amount}</td>
-                    <td className="px-6 py-4">{row.paid_amount}</td>
-                    <td className="px-6 py-4"><span className="p-3 border-2 rounded-lg bg-[#029ED936]">{row.status}</span></td>
-                    <td className="px-6 py-4">{row.due_amount}</td>
+                    <td className="px-6 py-4">{row.item_code}</td>
+                    <td className="px-6 py-4">{row.item_name}</td>
+                    <td className="px-6 py-4">{row.category}</td>
+                    <td className="px-6 py-4">{row.quantity}</td>
+                    <td className="px-6 py-4">{row.price}</td>
                     <td className="px-6 py-4">{row.discount}</td>
-                    <td className="px-6 py-4">{row.created_at}</td>
+                    <td className="px-6 py-4">{row.status}</td>
                     <td className="flex items-center px-6 py-4 space-x-2">
                       <button className="p-3 border-2 rounded-lg bg-[#029ED9] text-white" onClick={handleMore}>MORE</button>
                     </td>
