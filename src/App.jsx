@@ -201,7 +201,7 @@ function App() {
         <Route path="/sales/salesItems" element={<RequireAuth><SalesItem /></RequireAuth>} />
         <Route path="/sales/sales_item" element={<RequireAuth><SalesItem /></RequireAuth>} />
         <Route path="/sales/return_list_view" element={<RequireAuth><ReturnListView /></RequireAuth>} />
-        <Route path="/sales/payment_details" element={<RequireAuth><PaymentDetails /></RequireAuth>} />
+        <Route path="/sales/payment_details/:saleId" element={<RequireAuth><PaymentDetails /></RequireAuth>} />
 
         {/* Customer Invoice */}
         <Route path="/sales/customer_invoice" element={<RequireAuth><CustomerInvoice /></RequireAuth>} />
