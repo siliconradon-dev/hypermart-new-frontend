@@ -1,13 +1,85 @@
-import React from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../../../components/Layout';
 import './SalesItem.css';
 
 const SalesItem = () => {
   const navigate = useNavigate();
+  const token = useMemo(() => localStorage.getItem('token'), []);
+
+  const [categories, setCategories] = useState([]);
+  const [categoryId, setCategoryId] = useState('');
+
+  const ensureToken = () => {
+    const t = localStorage.getItem('token');
+    if (!t) {
+      localStorage.removeItem('user');
+      window.location.assign('/');
+      return null;
+    }
+    return t;
+  };
+
+  useEffect(() => {
+    const loadCats = async () => {
+      try {
+        const t = ensureToken();
+        if (!t) return;
+        const resp = await fetch('/api/item-categories', { headers: { Authorization: `Bearer ${t}` } });
+        const data = await resp.json().catch(() => ({}));
+        if (resp.status === 401) {
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          window.location.assign('/');
+          return;
+        }
+        setCategories(Array.isArray(data?.categories) ? data.categories : []);
+      } catch {
+        setCategories([]);
+      }
+    };
+    loadCats();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const [sales, setSales] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
   const handleMore = () => {
     navigate('/sales/payment_details');
   };
+
+  // Load sales data
+  useEffect(() => {
+    const loadSales = async () => {
+      setLoading(true);
+      setError('');
+      try {
+        const t = ensureToken();
+        if (!t) return;
+        const params = new URLSearchParams();
+        if (categoryId) params.set('category_id', categoryId);
+        // Add more filters as needed
+        const resp = await fetch(`/api/sales?${params.toString()}`, { headers: { Authorization: `Bearer ${t}` } });
+        const data = await resp.json().catch(() => ({}));
+        if (resp.status === 401) {
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          window.location.assign('/');
+          return;
+        }
+        setSales(Array.isArray(data?.sales) ? data.sales : []);
+      } catch {
+        setError('Failed to load sales data.');
+        setSales([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadSales();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [categoryId]);
   return (
     <Layout>
       {/* Loading Overlay (UI only) */}
@@ -53,9 +125,17 @@ const SalesItem = () => {
           <form className="grid gap-6 py-6 md:grid-cols-6" onSubmit={e => e.preventDefault()}>
             <div className="custom-select">
               <label htmlFor="category_id" className="block mb-2 text-sm font-medium text-black">Category</label>
-              <select name="category_id" id="category_id" className="hidden">
+              <select
+                name="category_id"
+                id="category_id"
+                className="bg-gray-50 w-full border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
+                value={categoryId}
+                onChange={(e) => setCategoryId(e.target.value)}
+              >
                 <option value="">All Categories</option>
-                <option value="1">sample category</option>
+                {categories.map((c) => (
+                  <option key={c.id} value={String(c.id)}>{c.categories}</option>
+                ))}
               </select>
             </div>
             <div>
@@ -137,54 +217,28 @@ const SalesItem = () => {
                 </tr>
               </thead>
               <tbody>
-                <tr className="text-black bg-white border-2">
-                  <td scope="row" className="px-6 py-4 font-medium whitespace-nowrap">a16f164b-9c3f-423a-a507-643e6c6f2d45</td>
-                  <td className="px-6 py-4 sales-code">SALE-69CC1EAAE28F9</td>
-                  <td className="px-6 py-4 customer-name">Customer</td>
-                  <td className="px-6 py-4 customer-name">1234567890</td>
-                  <td className="px-6 py-4 grand-total" data-grand-total="11000.00">11000.00</td>
-                  <td className="px-6 py-4 paid-amount" data-paid-amount="11000.00">11000.00</td>
-                  <td className="px-6 py-4 paid-amount" data-paid-amount="11000.00">11000.00</td>
-                  <td className="px-6 py-4"><span className="p-3 border-2 rounded-lg bg-[#029ED936]">PAID</span></td>
-                  <td className="px-6 py-4 to-pay" data-to-pay="0">0</td>
-                  <td className="px-6 py-4 discount">0.00</td>
-                  <td className="px-6 py-4 created-at">2026-04-01 00:51:14</td>
-                  <td className="flex items-center px-6 py-4 space-x-2">
-                    <button className="p-3 border-2 rounded-lg bg-[#029ED9] text-white" onClick={handleMore}>MORE</button>
-                  </td>
-                </tr>
-                <tr className="text-black bg-white border-2">
-                  <td scope="row" className="px-6 py-4 font-medium whitespace-nowrap">a16f0fb2-5727-4e2d-83a6-e46b2e197971</td>
-                  <td className="px-6 py-4 sales-code">SALE-69CC1A57BD3D7</td>
-                  <td className="px-6 py-4 customer-name">BANDULA</td>
-                  <td className="px-6 py-4 customer-name">0777608679</td>
-                  <td className="px-6 py-4 grand-total" data-grand-total="3300.00">3300.00</td>
-                  <td className="px-6 py-4 paid-amount" data-paid-amount="3300.00">3300.00</td>
-                  <td className="px-6 py-4 paid-amount" data-paid-amount="3300.00">3300.00</td>
-                  <td className="px-6 py-4"><span className="p-3 border-2 rounded-lg bg-[#029ED936]">PAID</span></td>
-                  <td className="px-6 py-4 to-pay" data-to-pay="0">0</td>
-                  <td className="px-6 py-4 discount">0.00</td>
-                  <td className="px-6 py-4 created-at">2026-04-01 00:32:47</td>
-                  <td className="flex items-center px-6 py-4 space-x-2">
-                    <button className="p-3 border-2 rounded-lg bg-[#029ED9] text-white" onClick={handleMore}>MORE</button>
-                  </td>
-                </tr>
-                <tr className="text-black bg-white border-2">
-                  <td scope="row" className="px-6 py-4 font-medium whitespace-nowrap">a16e5fa0-744b-427f-a7bb-e3d634c7173c</td>
-                  <td className="px-6 py-4 sales-code">SALE-69CBA6F433883</td>
-                  <td className="px-6 py-4 customer-name">Customer</td>
-                  <td className="px-6 py-4 customer-name">1234567890</td>
-                  <td className="px-6 py-4 grand-total" data-grand-total="2150.00">2150.00</td>
-                  <td className="px-6 py-4 paid-amount" data-paid-amount="2150.00">2150.00</td>
-                  <td className="px-6 py-4 paid-amount" data-paid-amount="2150.00">2150.00</td>
-                  <td className="px-6 py-4"><span className="p-3 border-2 rounded-lg bg-[#029ED936]">PAID</span></td>
-                  <td className="px-6 py-4 to-pay" data-to-pay="0">0</td>
-                  <td className="px-6 py-4 discount">100.00</td>
-                  <td className="px-6 py-4 created-at">2026-03-31 16:20:28</td>
-                  <td className="flex items-center px-6 py-4 space-x-2">
-                    <button className="p-3 border-2 rounded-lg bg-[#029ED9] text-white" onClick={handleMore}>MORE</button>
-                  </td>
-                </tr>
+                {loading ? (
+                  <tr><td colSpan={12} className="text-center py-6">Loading…</td></tr>
+                ) : sales.length === 0 ? (
+                  <tr><td colSpan={12} className="text-center py-6">No sales item found</td></tr>
+                ) : sales.map((row, idx) => (
+                  <tr key={row.id} className="text-black bg-white border-2">
+                    <td className="px-6 py-4 font-medium whitespace-nowrap">{row.id}</td>
+                    <td className="px-6 py-4">{row.sales_code}</td>
+                    <td className="px-6 py-4">{row.customer_name}</td>
+                    <td className="px-6 py-4">{row.contact_number}</td>
+                    <td className="px-6 py-4">{row.total}</td>
+                    <td className="px-6 py-4">{row.received_amount}</td>
+                    <td className="px-6 py-4">{row.paid_amount}</td>
+                    <td className="px-6 py-4"><span className="p-3 border-2 rounded-lg bg-[#029ED936]">{row.status}</span></td>
+                    <td className="px-6 py-4">{row.due_amount}</td>
+                    <td className="px-6 py-4">{row.discount}</td>
+                    <td className="px-6 py-4">{row.created_at}</td>
+                    <td className="flex items-center px-6 py-4 space-x-2">
+                      <button className="p-3 border-2 rounded-lg bg-[#029ED9] text-white" onClick={handleMore}>MORE</button>
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
