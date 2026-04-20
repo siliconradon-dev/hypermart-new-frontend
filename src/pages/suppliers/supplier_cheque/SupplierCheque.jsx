@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Layout from '../../../components/Layout';
 import './SupplierCheque.css';
 
@@ -21,7 +21,58 @@ const initialBounceState = {
 
 const SupplierCheque = ({ onBackToMain }) => {
   const [loading, setLoading] = useState(false);
+  const [cheques, setCheques] = useState([]);
+  const [totalCount, setTotalCount] = useState(0);
+  const [page, setPage] = useState(1);
+  const [entries, setEntries] = useState(30);
+  const [filters, setFilters] = useState({
+    cheque_number: '',
+    cheque_customer: '',
+    cheque_status: '',
+    bank_name: '',
+    cheque_date_from: '',
+    cheque_date_to: '',
+    clearance_date_from: '',
+    clearance_date_to: '',
+    cheque_min_amount: '',
+    cheque_max_amount: '',
+    has_replacement: '',
+  });
   const [bounceState, setBounceState] = useState(initialBounceState);
+  // Fetch cheques from backend
+  const fetchCheques = async (filtersArg = filters, pageArg = page, entriesArg = entries) => {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams();
+      if (filtersArg.cheque_number) params.set('cheque_number', filtersArg.cheque_number);
+      if (filtersArg.cheque_customer) params.set('search', filtersArg.cheque_customer);
+      if (filtersArg.cheque_status) params.set('cheque_status', filtersArg.cheque_status);
+      if (filtersArg.bank_name) params.set('bank_name', filtersArg.bank_name);
+      if (filtersArg.cheque_date_from) params.set('date_from', filtersArg.cheque_date_from);
+      if (filtersArg.cheque_date_to) params.set('date_to', filtersArg.cheque_date_to);
+      if (filtersArg.clearance_date_from) params.set('clearance_date_from', filtersArg.clearance_date_from);
+      if (filtersArg.clearance_date_to) params.set('clearance_date_to', filtersArg.clearance_date_to);
+      if (filtersArg.cheque_min_amount) params.set('min_amount', filtersArg.cheque_min_amount);
+      if (filtersArg.cheque_max_amount) params.set('max_amount', filtersArg.cheque_max_amount);
+      if (filtersArg.has_replacement) params.set('has_replacement', filtersArg.has_replacement);
+      params.set('limit', entriesArg);
+      params.set('offset', (pageArg - 1) * entriesArg);
+      const resp = await fetch(`/api/supplier-cheques?${params.toString()}`);
+      const data = await resp.json();
+      setCheques(Array.isArray(data.cheques) ? data.cheques : []);
+      setTotalCount(Number(data.totalCount) || 0);
+    } catch {
+      setCheques([]);
+      setTotalCount(0);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchCheques(filters, page, entries);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, entries]);
 
   const openBounceChequeModal = () => {
     setBounceState({
@@ -200,7 +251,7 @@ const SupplierCheque = ({ onBackToMain }) => {
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">
                   <i className="fas fa-filter mr-2" />Filter Cheques
                 </h3>
-                <form className="grid grid-cols-1 gap-4 md:grid-cols-4" onSubmit={(event) => event.preventDefault()}>
+                <form className="grid grid-cols-1 gap-4 md:grid-cols-4" onSubmit={e => { e.preventDefault(); setPage(1); fetchCheques(filters, 1, entries); }}>
                   <input type="hidden" name="search" defaultValue="" />
                   <input type="hidden" name="invoice_code" defaultValue="" />
                   <input type="hidden" name="payment_status" defaultValue="" />
@@ -212,15 +263,15 @@ const SupplierCheque = ({ onBackToMain }) => {
 
                   <div>
                     <label className="block mb-2 text-sm font-medium text-gray-700">Cheque Number</label>
-                    <input type="text" name="cheque_number" placeholder="Cheque number..." className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" />
+                    <input type="text" name="cheque_number" value={filters.cheque_number} onChange={e => setFilters(f => ({ ...f, cheque_number: e.target.value }))} placeholder="Cheque number..." className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" />
                   </div>
                   <div>
                     <label className="block mb-2 text-sm font-medium text-gray-700">Supplier Name</label>
-                    <input type="text" name="cheque_customer" placeholder="Supplier name..." className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" />
+                    <input type="text" name="cheque_customer" value={filters.cheque_customer} onChange={e => setFilters(f => ({ ...f, cheque_customer: e.target.value }))} placeholder="Supplier name..." className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" />
                   </div>
                   <div>
                     <label className="block mb-2 text-sm font-medium text-gray-700">Cheque Status</label>
-                    <select name="cheque_status" className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" defaultValue="">
+                    <select name="cheque_status" value={filters.cheque_status} onChange={e => setFilters(f => ({ ...f, cheque_status: e.target.value }))} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
                       <option value="">All Statuses</option>
                       <option value="pending">Pending</option>
                       <option value="cleared">Cleared</option>
@@ -230,35 +281,35 @@ const SupplierCheque = ({ onBackToMain }) => {
                   </div>
                   <div>
                     <label className="block mb-2 text-sm font-medium text-gray-700">Bank Name</label>
-                    <input type="text" name="bank_name" placeholder="Bank name..." className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" />
+                    <input type="text" name="bank_name" value={filters.bank_name} onChange={e => setFilters(f => ({ ...f, bank_name: e.target.value }))} placeholder="Bank name..." className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" />
                   </div>
                   <div>
                     <label className="block mb-2 text-sm font-medium text-gray-700">Cheque Date From</label>
-                    <input type="date" name="cheque_date_from" defaultValue="2026-04-01" className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" />
+                    <input type="date" name="cheque_date_from" value={filters.cheque_date_from} onChange={e => setFilters(f => ({ ...f, cheque_date_from: e.target.value }))} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" />
                   </div>
                   <div>
                     <label className="block mb-2 text-sm font-medium text-gray-700">Cheque Date To</label>
-                    <input type="date" name="cheque_date_to" defaultValue="2026-04-30" className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" />
+                    <input type="date" name="cheque_date_to" value={filters.cheque_date_to} onChange={e => setFilters(f => ({ ...f, cheque_date_to: e.target.value }))} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" />
                   </div>
                   <div>
                     <label className="block mb-2 text-sm font-medium text-gray-700">Clearance Date From</label>
-                    <input type="date" name="clearance_date_from" defaultValue="2026-04-01" className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" />
+                    <input type="date" name="clearance_date_from" value={filters.clearance_date_from} onChange={e => setFilters(f => ({ ...f, clearance_date_from: e.target.value }))} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" />
                   </div>
                   <div>
                     <label className="block mb-2 text-sm font-medium text-gray-700">Clearance Date To</label>
-                    <input type="date" name="clearance_date_to" defaultValue="2026-04-30" className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" />
+                    <input type="date" name="clearance_date_to" value={filters.clearance_date_to} onChange={e => setFilters(f => ({ ...f, clearance_date_to: e.target.value }))} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" />
                   </div>
                   <div>
                     <label className="block mb-2 text-sm font-medium text-gray-700">Min Cheque Amount</label>
-                    <input type="number" name="cheque_min_amount" placeholder="0.00" step="0.01" className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" />
+                    <input type="number" name="cheque_min_amount" value={filters.cheque_min_amount} onChange={e => setFilters(f => ({ ...f, cheque_min_amount: e.target.value }))} placeholder="0.00" step="0.01" className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" />
                   </div>
                   <div>
                     <label className="block mb-2 text-sm font-medium text-gray-700">Max Cheque Amount</label>
-                    <input type="number" name="cheque_max_amount" placeholder="0.00" step="0.01" className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" />
+                    <input type="number" name="cheque_max_amount" value={filters.cheque_max_amount} onChange={e => setFilters(f => ({ ...f, cheque_max_amount: e.target.value }))} placeholder="0.00" step="0.01" className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" />
                   </div>
                   <div>
                     <label className="block mb-2 text-sm font-medium text-gray-700">Replacement Status</label>
-                    <select name="has_replacement" className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" defaultValue="">
+                    <select name="has_replacement" value={filters.has_replacement} onChange={e => setFilters(f => ({ ...f, has_replacement: e.target.value }))} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
                       <option value="">All Cheques</option>
                       <option value="yes">Has Replacement</option>
                       <option value="no">No Replacement</option>
@@ -269,7 +320,19 @@ const SupplierCheque = ({ onBackToMain }) => {
                     <button type="submit" className="px-6 py-2 text-white rounded-lg bg-[#3c8c2c] hover:opacity-90">
                       <i className="mr-2 fas fa-filter" />Apply Cheque Filters
                     </button>
-                    <a href="/suppliers/invoices" className="px-6 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200">
+                    <a href="/suppliers/invoices" className="px-6 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200" onClick={e => { e.preventDefault(); setFilters({
+                      cheque_number: '',
+                      cheque_customer: '',
+                      cheque_status: '',
+                      bank_name: '',
+                      cheque_date_from: '',
+                      cheque_date_to: '',
+                      clearance_date_from: '',
+                      clearance_date_to: '',
+                      cheque_min_amount: '',
+                      cheque_max_amount: '',
+                      has_replacement: '',
+                    }); setPage(1); fetchCheques({}, 1, entries); }}>
                       <i className="mr-2 fas fa-redo" />Reset All
                     </a>
                   </div>
@@ -293,14 +356,31 @@ const SupplierCheque = ({ onBackToMain }) => {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    <tr>
-                      <td colSpan="10" className="px-6 py-12 text-center text-gray-500">
-                        <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                        </svg>
-                        <p className="mt-2">No cheques found</p>
-                      </td>
-                    </tr>
+                    {cheques.length === 0 && !loading ? (
+                      <tr>
+                        <td colSpan="10" className="px-6 py-12 text-center text-gray-500">
+                          <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                          </svg>
+                          <p className="mt-2">No cheques found</p>
+                        </td>
+                      </tr>
+                    ) : (
+                      cheques.map((cheque, idx) => (
+                        <tr key={cheque.id}>
+                          <td className="px-4 py-2">{(page - 1) * entries + idx + 1}</td>
+                          <td className="px-4 py-2">{cheque.cheque_number}</td>
+                          <td className="px-4 py-2">{cheque.supplier_id}</td>
+                          <td className="px-4 py-2">{cheque.bank_name}</td>
+                          <td className="px-4 py-2">Rs. {Number(cheque.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+                          <td className="px-4 py-2">{cheque.cheque_date}</td>
+                          <td className="px-4 py-2">{cheque.clearance_date}</td>
+                          <td className="px-4 py-2">{cheque.cheque_status}</td>
+                          <td className="px-4 py-2">-</td>
+                          <td className="px-4 py-2">-</td>
+                        </tr>
+                      ))
+                    )}
                   </tbody>
                 </table>
                 <div className="p-4" />

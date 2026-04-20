@@ -1,23 +1,18 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import Layout from '../../../components/Layout';
 import './SupplierSInvoice.css';
 
-const invoiceRows = [
-  {
-    id: 2,
-    invoiceCode: '758979jbhxgdx',
-    supplier: 'sample supplier',
-    total: 1200,
-    transactionType: 'Credit',
-    transactionTypeTone: 'bg-red-100 text-red-800',
-    status: 'Paid',
-    statusTone: 'bg-green-100 text-green-800',
-    actionLabel: 'Paid',
-    paymentRecords: [
-      { source: 'Cash', mode: 'Cash', amount: 1200, recordedAt: '2026-04-10T10:15:00' },
-    ],
-  },
-];
+const statusToneMap = {
+  paid: 'bg-green-100 text-green-800',
+  unpaid: 'bg-red-100 text-red-800',
+  partial: 'bg-yellow-100 text-yellow-800',
+  overdue: 'bg-orange-100 text-orange-800',
+  pending: 'bg-gray-100 text-gray-800',
+};
+const transactionTypeToneMap = {
+  credit: 'bg-red-100 text-red-800',
+  debit: 'bg-blue-100 text-blue-800',
+};
 
 const initialPaymentFilter = {
   reportDateFrom: '2026-04-01',
@@ -48,18 +43,74 @@ const SupplierSInvoice = ({ onBackToMain }) => {
   const [invoiceFilter, setInvoiceFilter] = useState(initialInvoiceFilter);
   const [paymentsModal, setPaymentsModal] = useState({ open: false, invoice: null, loading: false });
   const [reversalDialog, setReversalDialog] = useState({ open: false, type: '', invoiceId: null, invoiceCode: '', reason: '' });
+  const [invoices, setInvoices] = useState([]);
+  const [totalCount, setTotalCount] = useState(0);
+  const [page, setPage] = useState(1);
+  const [pageInput, setPageInput] = useState('1');
+  const [entries, setEntries] = useState(30);
 
-  const filteredRows = useMemo(() => invoiceRows, []);
+  // Fetch invoices from backend
+  const fetchInvoices = async (filters = invoiceFilter, pageArg = page, entriesArg = entries) => {
+    setLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const limit = Number(entriesArg) || 30;
+      const offset = ((Number(pageArg) || 1) - 1) * limit;
+      const params = new URLSearchParams();
+      if (filters.search) params.set('search', filters.search);
+      if (filters.invoiceCode) params.set('reference_number', filters.invoiceCode);
+      if (filters.paymentStatus) params.set('payment_status', filters.paymentStatus);
+      if (filters.dateFrom) params.set('date_from', filters.dateFrom);
+      if (filters.dateTo) params.set('date_to', filters.dateTo);
+      if (filters.minAmount) params.set('min_amount', filters.minAmount);
+      if (filters.maxAmount) params.set('max_amount', filters.maxAmount);
+      params.set('limit', limit);
+      params.set('offset', offset);
+      const resp = await fetch(`/api/supplier-invoices?${params.toString()}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      const data = await resp.json().catch(() => ({}));
+      if (!resp.ok) {
+        setInvoices([]);
+        setTotalCount(0);
+        setLoading(false);
+        return;
+      }
+      setInvoices(Array.isArray(data.invoices) ? data.invoices : []);
+      setTotalCount(Number(data.totalCount) || 0);
+    } catch {
+      setInvoices([]);
+      setTotalCount(0);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchInvoices(invoiceFilter, page, entries);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, entries]);
+
+  // Pagination calculations
+  const safeEntries = Math.max(1, Number(entries) || 30);
+  const totalPages = Math.max(1, Math.ceil(totalCount / safeEntries));
+  const safePage = Math.min(Math.max(page, 1), totalPages);
+  const startIndex = totalCount === 0 ? 0 : (safePage - 1) * safeEntries + 1;
+  const endIndex = totalCount === 0 ? 0 : Math.min((safePage - 1) * safeEntries + invoices.length, totalCount);
+  const pageNumbers = useMemo(() => {
+    const pages = [];
+    const maxButtons = 5;
+    const last = totalPages;
+    const current = safePage;
+    let start = Math.max(1, current - Math.floor(maxButtons / 2));
+    let end = Math.min(last, start + maxButtons - 1);
+    start = Math.max(1, end - maxButtons + 1);
+    for (let p = start; p <= end; p += 1) pages.push(p);
+    return pages;
+  }, [safePage, totalPages]);
 
   const openPaymentsModal = (invoice) => {
-    setPaymentsModal({ open: true, invoice, loading: true });
-
-    window.setTimeout(() => {
-      setPaymentsModal((current) => ({
-        ...current,
-        loading: false,
-      }));
-    }, 300);
+    setPaymentsModal({ open: true, invoice, loading: false });
   };
 
   const closePaymentsModal = () => {
@@ -89,17 +140,19 @@ const SupplierSInvoice = ({ onBackToMain }) => {
 
   const paymentSummary = useMemo(() => {
     const invoice = paymentsModal.invoice;
-
     if (!invoice) {
       return { total: 0, paid: 0, balance: 0, records: [] };
     }
-
-    const paid = invoice.paymentRecords.reduce((sum, record) => sum + record.amount, 0);
+    let records = [];
+    try {
+      records = invoice.payment_records ? JSON.parse(invoice.payment_records) : [];
+    } catch { records = []; }
+    const paid = Number(invoice.paid_amount) || 0;
     return {
-      total: invoice.total,
+      total: Number(invoice.amount) || 0,
       paid,
-      balance: Math.max(0, invoice.total - paid),
-      records: invoice.paymentRecords,
+      balance: Math.max(0, (Number(invoice.amount) || 0) - paid),
+      records,
     };
   }, [paymentsModal.invoice]);
 
@@ -208,7 +261,7 @@ const SupplierSInvoice = ({ onBackToMain }) => {
               <h3 className="text-lg font-semibold text-gray-900 mb-4">
                 <i className="fas fa-filter mr-2" />Filter Invoices
               </h3>
-              <form className="grid grid-cols-1 gap-4 md:grid-cols-4" onSubmit={(event) => event.preventDefault()}>
+              <form className="grid grid-cols-1 gap-4 md:grid-cols-4" onSubmit={e => { e.preventDefault(); setPage(1); setPageInput('1'); fetchInvoices(invoiceFilter, 1, entries); }}>
                 <div>
                   <label className="block mb-2 text-sm font-medium text-gray-700">Search Supplier</label>
                   <input type="text" name="search" value={invoiceFilter.search} onChange={(event) => setInvoiceFilter((current) => ({ ...current, search: event.target.value }))} placeholder="Supplier name..." className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" />
@@ -246,7 +299,7 @@ const SupplierSInvoice = ({ onBackToMain }) => {
                   <button type="submit" className="px-6 py-2 text-white rounded-lg bg-[#3c8c2c] hover:opacity-90">
                     <i className="mr-2 fas fa-filter" />Apply Filters
                   </button>
-                  <a href="/suppliers/invoices" className="px-6 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200">
+                  <a href="/suppliers/invoices" className="px-6 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200" onClick={e => { e.preventDefault(); setInvoiceFilter(initialInvoiceFilter); setPage(1); setPageInput('1'); fetchInvoices(initialInvoiceFilter, 1, entries); }}>
                     <i className="mr-2 fas fa-redo" />Reset
                   </a>
                 </div>
@@ -269,40 +322,157 @@ const SupplierSInvoice = ({ onBackToMain }) => {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {filteredRows.map((invoice, index) => (
-                    <tr key={invoice.id}>
-                      <td className="px-6 py-4 text-sm text-gray-900 whitespace-nowrap">{index + 1}</td>
-                      <td className="px-6 py-4 text-sm font-medium text-gray-900 whitespace-nowrap">{invoice.invoiceCode}</td>
-                      <td className="px-6 py-4 text-sm text-gray-900 whitespace-nowrap">{invoice.supplier}</td>
-                      <td className="px-6 py-4 text-sm text-gray-900 whitespace-nowrap">Rs. {formatNumber(invoice.total)}</td>
-                      <td className="px-6 py-4 text-sm text-gray-900 whitespace-nowrap">
-                        <span className={`px-2 py-1 text-xs font-semibold rounded-full ${invoice.transactionTypeTone}`}>{invoice.transactionType}</span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-center">
-                        <span className={`px-3 py-1 text-xs font-semibold rounded-full ${invoice.statusTone}`}>{invoice.status}</span>
-                      </td>
-                      <td className="px-6 py-4 text-sm font-medium whitespace-nowrap justify-end flex gap-3">
-                        <span className="text-green-600 text-xs">
-                          <i className="fas fa-check-circle" /> {invoice.actionLabel}
-                        </span>
-                        <button type="button" onClick={() => openPaymentsModal(invoice)} className="bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded-md text-xs" title="View Payment Records">
-                          <i className="fas fa-receipt mr-1" />Payments
-                        </button>
-                        <a href={`/suppliers/invoices/${invoice.id}/invoice`} className="bg-gray-600 text-white px-2 py-1 rounded-md hover:bg-gray-700" target="_blank" rel="noreferrer" title="View Invoice">
-                          <i className="fas fa-file-invoice mr-1" />Invoice
-                        </a>
-                        <a href={`/suppliers/invoices/${invoice.id}/show`} className="bg-blue-500 text-white px-2 py-1 rounded-md hover:bg-blue-600" title="View Invoice Details">
-                          <i className="fas fa-eye mr-1" />Show
-                        </a>
-                        <button type="button" onClick={() => openReversalDialog('payment', invoice.id, invoice.invoiceCode)} className="bg-orange-500 hover:bg-orange-600 text-white px-2 py-1 rounded-md text-xs" title="Reverse Payment">
-                          <i className="fas fa-undo mr-1" />Reverse Payment
-                        </button>
-                      </td>
+                  {invoices.length === 0 && !loading ? (
+                    <tr>
+                      <td colSpan={7} className="px-6 py-8 text-center text-gray-500 text-lg">No data found</td>
                     </tr>
-                  ))}
+                  ) : (
+                    invoices.map((invoice, index) => (
+                      <tr key={invoice.id}>
+                        <td className="px-6 py-4 text-sm text-gray-900 whitespace-nowrap">{startIndex + index}</td>
+                        <td className="px-6 py-4 text-sm font-medium text-gray-900 whitespace-nowrap">{invoice.invoice_code}</td>
+                        <td className="px-6 py-4 text-sm text-gray-900 whitespace-nowrap">{invoice.supplier_id}</td>
+                        <td className="px-6 py-4 text-sm text-gray-900 whitespace-nowrap">Rs. {formatNumber(invoice.amount)}</td>
+                        <td className="px-6 py-4 text-sm text-gray-900 whitespace-nowrap">
+                          <span className={`px-2 py-1 text-xs font-semibold rounded-full ${transactionTypeToneMap[(invoice.transaction_type || '').toLowerCase()] || 'bg-gray-100 text-gray-800'}`}>{invoice.transaction_type}</span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-center">
+                          <span className={`px-3 py-1 text-xs font-semibold rounded-full ${statusToneMap[(invoice.payment_status || '').toLowerCase()] || 'bg-gray-100 text-gray-800'}`}>{invoice.payment_status}</span>
+                        </td>
+                        <td className="px-6 py-4 text-sm font-medium whitespace-nowrap justify-end flex gap-3">
+                          <span className="text-green-600 text-xs">
+                            <i className="fas fa-check-circle" /> {Number(invoice.paid_amount) >= Number(invoice.amount) ? 'Paid' : 'Unpaid'}
+                          </span>
+                          <button type="button" onClick={() => openPaymentsModal(invoice)} className="bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded-md text-xs" title="View Payment Records">
+                            <i className="fas fa-receipt mr-1" />Payments
+                          </button>
+                          <a href={`/suppliers/invoices/${invoice.id}/invoice`} className="bg-gray-600 text-white px-2 py-1 rounded-md hover:bg-gray-700" target="_blank" rel="noreferrer" title="View Invoice">
+                            <i className="fas fa-file-invoice mr-1" />Invoice
+                          </a>
+                          <a href={`/suppliers/invoices/${invoice.id}/show`} className="bg-blue-500 text-white px-2 py-1 rounded-md hover:bg-blue-600" title="View Invoice Details">
+                            <i className="fas fa-eye mr-1" />Show
+                          </a>
+                          <button type="button" onClick={() => openReversalDialog('payment', invoice.id, invoice.invoice_code)} className="bg-orange-500 hover:bg-orange-600 text-white px-2 py-1 rounded-md text-xs" title="Reverse Payment">
+                            <i className="fas fa-undo mr-1" />Reverse Payment
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
               <div className="p-4" />
+              {/* Pagination - Below the table */}
+              <div className="flex justify-center p-1 mt-1 mb-6 bg-white">
+                <div className="pagination" style={{ width: '100%', margin: '0px 50px' }}>
+                  <nav role="navigation" aria-label="Pagination Navigation" className="flex items-center justify-between">
+                    <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between w-full">
+                      <div>
+                        <p className="text-sm leading-5 text-gray-700">
+                          Showing <span className="font-medium">{startIndex}</span> to <span className="font-medium">{endIndex}</span> of <span className="font-medium">{totalCount}</span> results
+                        </p>
+                      </div>
+                      <div>
+                        <div className="flex items-center justify-end gap-3 mb-2">
+                          <label className="text-sm text-gray-700">Entries</label>
+                          <select
+                            className="p-2 text-sm border border-gray-300 rounded bg-white"
+                            value={entries}
+                            onChange={e => {
+                              setEntries(Number(e.target.value));
+                              setPage(1);
+                              setPageInput('1');
+                            }}
+                          >
+                            <option value={10}>10</option>
+                            <option value={25}>25</option>
+                            <option value={30}>30</option>
+                            <option value={50}>50</option>
+                            <option value={100}>100</option>
+                          </select>
+                          <label className="text-sm text-gray-700 ml-2">Page</label>
+                          <input
+                            type="number"
+                            min={1}
+                            className="w-20 p-2 text-sm border border-gray-300 rounded bg-white"
+                            value={pageInput}
+                            onChange={e => setPageInput(e.target.value)}
+                          />
+                          <button
+                            type="button"
+                            className="px-3 py-2 text-sm text-white bg-[#3c8c2c] rounded hover:bg-[#2d6e20]"
+                            onClick={() => {
+                              const next = Number(pageInput);
+                              if (!Number.isFinite(next)) return;
+                              const clamped = Math.min(Math.max(1, Math.trunc(next)), totalPages);
+                              setPage(clamped);
+                              setPageInput(String(clamped));
+                            }}
+                          >
+                            Go
+                          </button>
+                        </div>
+                        <span className="relative z-0 inline-flex rounded-md shadow-sm rtl:flex-row-reverse">
+                          <button
+                            type="button"
+                            aria-label="&laquo; Previous"
+                            disabled={safePage <= 1}
+                            onClick={() => {
+                              setPage(p => Math.max(1, p - 1));
+                              setPageInput(p => String(Math.max(1, Number(p) - 1)));
+                            }}
+                            className={
+                              `relative inline-flex items-center px-2 py-2 text-sm font-medium leading-5 border border-gray-300 rounded-l-md ` +
+                              (safePage <= 1 ? 'text-gray-400 bg-white cursor-default' : 'text-gray-700 bg-white hover:bg-gray-50')
+                            }
+                          >
+                            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
+                            </svg>
+                          </button>
+                          {pageNumbers.map((p) => (
+                            <button
+                              key={p}
+                              type="button"
+                              onClick={() => {
+                                setPage(p);
+                                setPageInput(String(p));
+                              }}
+                              className={
+                                `relative inline-flex items-center px-4 py-2 -ml-px text-sm font-medium leading-5 border ` +
+                                (p === safePage
+                                  ? 'text-white bg-blue-600 border-blue-600 cursor-default'
+                                  : 'text-gray-700 bg-white border-gray-300 hover:bg-gray-50')
+                              }
+                              aria-label={`Go to page ${p}`}
+                              disabled={p === safePage}
+                            >
+                              {p}
+                            </button>
+                          ))}
+                          <button
+                            type="button"
+                            aria-label="Next &raquo;"
+                            disabled={safePage >= totalPages}
+                            onClick={() => {
+                              setPage(p => Math.min(totalPages, p + 1));
+                              setPageInput(p => String(Math.min(totalPages, Number(p) + 1)));
+                            }}
+                            className={
+                              `relative inline-flex items-center px-2 py-2 -ml-px text-sm font-medium leading-5 border border-gray-300 rounded-r-md ` +
+                              (safePage >= totalPages ? 'text-gray-400 bg-white cursor-default' : 'text-gray-700 bg-white hover:bg-gray-50')
+                            }
+                          >
+                            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
+                            </svg>
+                          </button>
+                        </span>
+                      </div>
+                    </div>
+                  </nav>
+                </div>
+              </div>
             </div>
           </div>
         </div>

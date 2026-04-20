@@ -32,6 +32,10 @@ const SupplierList = () => {
     address: true,
     manage: true,
   });
+  // Pagination state
+  const [page, setPage] = useState(1);
+  const [pageInput, setPageInput] = useState('1');
+  const [totalCount, setTotalCount] = useState(0);
 
   const normalizeRow = (supplier) => {
     const statusId = Number(supplier?.status_id) || 1;
@@ -53,7 +57,7 @@ const SupplierList = () => {
     };
   };
 
-  const fetchSuppliers = async () => {
+  const fetchSuppliers = async (pageArg = page, entriesArg = entries, searchArg = searchTerm) => {
     const token = localStorage.getItem('token');
     if (!token) {
       localStorage.removeItem('user');
@@ -64,12 +68,14 @@ const SupplierList = () => {
     setError('');
     setLoading(true);
     try {
-      const limit = Number.parseInt(entries, 10);
+      const limit = Number.parseInt(entriesArg, 10);
       const safeLimit = Number.isFinite(limit) && limit > 0 ? limit : 30;
-
-      const search = searchTerm.trim();
+      const safePage = Math.max(1, Number(pageArg) || 1);
+      const offset = (safePage - 1) * safeLimit;
+      const search = searchArg.trim();
       const qs = new URLSearchParams();
       qs.set('limit', String(safeLimit));
+      qs.set('offset', String(offset));
       if (search) qs.set('search', search);
 
       const resp = await fetch(`/api/suppliers?${qs.toString()}`, {
@@ -87,32 +93,45 @@ const SupplierList = () => {
 
       if (!resp.ok) {
         setError(data?.error || 'Failed to load suppliers.');
+        setRows([]);
+        setTotalCount(0);
         return;
       }
 
       const nextRows = Array.isArray(data?.suppliers) ? data.suppliers.map(normalizeRow) : [];
       setRows(nextRows);
+      setTotalCount(Number(data?.totalCount) || 0);
     } catch {
       setError('Network error. Please try again.');
+      setRows([]);
+      setTotalCount(0);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchSuppliers();
+    fetchSuppliers(page, entries, searchTerm);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [page, entries]);
 
-  const filteredRows = useMemo(() => {
-    const normalizedSearch = searchTerm.trim().toLowerCase();
-    const limit = Number.parseInt(entries, 10);
-    const safeLimit = Number.isFinite(limit) && limit > 0 ? limit : 30;
-
-    return rows
-      .filter((row) => row.supplierName.toLowerCase().includes(normalizedSearch))
-      .slice(0, safeLimit);
-  }, [rows, searchTerm, entries]);
+  // Pagination calculations
+  const safeEntries = Math.max(1, Number(entries) || 30);
+  const totalPages = Math.max(1, Math.ceil(totalCount / safeEntries));
+  const safePage = Math.min(Math.max(page, 1), totalPages);
+  const startIndex = totalCount === 0 ? 0 : (safePage - 1) * safeEntries + 1;
+  const endIndex = totalCount === 0 ? 0 : Math.min((safePage - 1) * safeEntries + rows.length, totalCount);
+  const pageNumbers = useMemo(() => {
+    const pages = [];
+    const maxButtons = 5;
+    const last = totalPages;
+    const current = safePage;
+    let start = Math.max(1, current - Math.floor(maxButtons / 2));
+    let end = Math.min(last, start + maxButtons - 1);
+    start = Math.max(1, end - maxButtons + 1);
+    for (let p = start; p <= end; p += 1) pages.push(p);
+    return pages;
+  }, [safePage, totalPages]);
 
   const toggleColumn = (key) => {
     setVisibleColumns((current) => ({
@@ -124,10 +143,9 @@ const SupplierList = () => {
 
   const exportTableRows = () => {
     const header = columnDefinitions.map((column) => column.label).join('\t');
-    const body = filteredRows
+    const body = rows
       .map((row) => [row.supplierCode, row.supplierName, row.mobileNumber, row.emailAddress, row.address, row.statusButtonLabel].join('\t'))
       .join('\n');
-
     return `${header}\n${body}`;
   };
 
@@ -143,9 +161,8 @@ const SupplierList = () => {
   const handleCsvExport = () => {
     const csvContent = [
       columnDefinitions.map((column) => column.label).join(','),
-      ...filteredRows.map((row) => [row.supplierCode, row.supplierName, row.mobileNumber, row.emailAddress, row.address, row.statusButtonLabel].join(',')),
+      ...rows.map((row) => [row.supplierCode, row.supplierName, row.mobileNumber, row.emailAddress, row.address, row.statusButtonLabel].join(',')),
     ].join('\n');
-
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = window.URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -160,9 +177,8 @@ const SupplierList = () => {
   const handleExcelExport = () => {
     const workbookData = [
       columnDefinitions.map((column) => column.label),
-      ...filteredRows.map((row) => [row.supplierCode, row.supplierName, row.mobileNumber, row.emailAddress, row.address, row.statusButtonLabel]),
+      ...rows.map((row) => [row.supplierCode, row.supplierName, row.mobileNumber, row.emailAddress, row.address, row.statusButtonLabel]),
     ];
-
     const worksheet = XLSX.utils.aoa_to_sheet(workbookData);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Suppliers');
@@ -173,7 +189,7 @@ const SupplierList = () => {
     const doc = new jsPDF();
     doc.autoTable({
       head: [columnDefinitions.map((column) => column.label)],
-      body: filteredRows.map((row) => [row.supplierCode, row.supplierName, row.mobileNumber, row.emailAddress, row.address, row.statusButtonLabel]),
+      body: rows.map((row) => [row.supplierCode, row.supplierName, row.mobileNumber, row.emailAddress, row.address, row.statusButtonLabel]),
     });
     doc.save('supplier.pdf');
   };
@@ -231,7 +247,9 @@ const SupplierList = () => {
   };
 
   const handleSearch = () => {
-    fetchSuppliers();
+    setPage(1);
+    setPageInput('1');
+    fetchSuppliers(1, entries, searchTerm);
   };
 
   return (
@@ -365,9 +383,9 @@ const SupplierList = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredRows.map((row, index) => (
+                  {rows.map((row, index) => (
                     <tr key={row.id} className="text-black bg-white border border-gray-200">
-                      <td className="px-4 py-2 font-medium whitespace-nowrap">{index + 1}</td>
+                      <td className="px-4 py-2 font-medium whitespace-nowrap">{startIndex + index}</td>
                       <td className={`px-4 py-2 ${visibleColumns.supplierCode ? '' : 'hidden'}`}>{row.supplierCode}</td>
                       <td className={`px-4 py-2 ${visibleColumns.supplierName ? '' : 'hidden'}`}>{row.supplierName}</td>
                       <td className={`px-4 py-2 ${visibleColumns.mobileNumber ? '' : 'hidden'}`}>{row.mobileNumber}</td>
@@ -377,7 +395,7 @@ const SupplierList = () => {
                       <td className="hidden px-4 py-2">{row.cityId}</td>
                       <td className="hidden px-4 py-2">{row.statusId}</td>
                       <td className="hidden px-4 py-2">{row.cityName}</td>
-                      <td className={`px-4 py-2 ${visibleColumns.manage ? '' : 'hidden'}`}>
+                      <td className={`px-4 py-2 ${visibleColumns.manage ? '' : 'hidden'}`}> 
                         <button type="button" className="p-2 border border-gray-300 rounded-md" onClick={(e) => handleEditSupplier(e, row.id)}>Edit</button>
                         <button
                           id={`status-button-${row.id}`}
@@ -393,6 +411,117 @@ const SupplierList = () => {
                   ))}
                 </tbody>
               </table>
+            </div>
+            {/* Pagination - Below the table */}
+            <div className="flex justify-center p-1 mt-1 mb-6 bg-white">
+              <div className="pagination" style={{ width: '100%', margin: '0px 50px' }}>
+                <nav role="navigation" aria-label="Pagination Navigation" className="flex items-center justify-between">
+                  <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between w-full">
+                    <div>
+                      <p className="text-sm leading-5 text-gray-700">
+                        Showing <span className="font-medium">{startIndex}</span> to <span className="font-medium">{endIndex}</span> of <span className="font-medium">{totalCount}</span> results
+                      </p>
+                    </div>
+                    <div>
+                      <div className="flex items-center justify-end gap-3 mb-2">
+                        <label className="text-sm text-gray-700">Entries</label>
+                        <select
+                          className="p-2 text-sm border border-gray-300 rounded bg-white"
+                          value={entries}
+                          onChange={e => {
+                            setEntries(e.target.value);
+                            setPage(1);
+                            setPageInput('1');
+                          }}
+                        >
+                          <option value={10}>10</option>
+                          <option value={25}>25</option>
+                          <option value={30}>30</option>
+                          <option value={50}>50</option>
+                          <option value={100}>100</option>
+                        </select>
+                        <label className="text-sm text-gray-700 ml-2">Page</label>
+                        <input
+                          type="number"
+                          min={1}
+                          className="w-20 p-2 text-sm border border-gray-300 rounded bg-white"
+                          value={pageInput}
+                          onChange={e => setPageInput(e.target.value)}
+                        />
+                        <button
+                          type="button"
+                          className="px-3 py-2 text-sm text-white bg-[#3c8c2c] rounded hover:bg-[#2d6e20]"
+                          onClick={() => {
+                            const next = Number(pageInput);
+                            if (!Number.isFinite(next)) return;
+                            const clamped = Math.min(Math.max(1, Math.trunc(next)), totalPages);
+                            setPage(clamped);
+                            setPageInput(String(clamped));
+                          }}
+                        >
+                          Go
+                        </button>
+                      </div>
+                      <span className="relative z-0 inline-flex rounded-md shadow-sm rtl:flex-row-reverse">
+                        <button
+                          type="button"
+                          aria-label="&laquo; Previous"
+                          disabled={safePage <= 1}
+                          onClick={() => {
+                            setPage(p => Math.max(1, p - 1));
+                            setPageInput(p => String(Math.max(1, Number(p) - 1)));
+                          }}
+                          className={
+                            `relative inline-flex items-center px-2 py-2 text-sm font-medium leading-5 border border-gray-300 rounded-l-md ` +
+                            (safePage <= 1 ? 'text-gray-400 bg-white cursor-default' : 'text-gray-700 bg-white hover:bg-gray-50')
+                          }
+                        >
+                          <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
+                          </svg>
+                        </button>
+                        {pageNumbers.map((p) => (
+                          <button
+                            key={p}
+                            type="button"
+                            onClick={() => {
+                              setPage(p);
+                              setPageInput(String(p));
+                            }}
+                            className={
+                              `relative inline-flex items-center px-4 py-2 -ml-px text-sm font-medium leading-5 border ` +
+                              (p === safePage
+                                ? 'text-white bg-blue-600 border-blue-600 cursor-default'
+                                : 'text-gray-700 bg-white border-gray-300 hover:bg-gray-50')
+                            }
+                            aria-label={`Go to page ${p}`}
+                            disabled={p === safePage}
+                          >
+                            {p}
+                          </button>
+                        ))}
+                        <button
+                          type="button"
+                          aria-label="Next &raquo;"
+                          disabled={safePage >= totalPages}
+                          onClick={() => {
+                            setPage(p => Math.min(totalPages, p + 1));
+                            setPageInput(p => String(Math.min(totalPages, Number(p) + 1)));
+                          }}
+                          className={
+                            `relative inline-flex items-center px-2 py-2 -ml-px text-sm font-medium leading-5 border border-gray-300 rounded-r-md ` +
+                            (safePage >= totalPages ? 'text-gray-400 bg-white cursor-default' : 'text-gray-700 bg-white hover:bg-gray-50')
+                          }
+                        >
+                          <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
+                          </svg>
+                        </button>
+                      </span>
+                    </div>
+                  </div>
+                </nav>
+              </div>
             </div>
           </div>
         </div>
