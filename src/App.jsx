@@ -247,11 +247,14 @@ function App() {
           <Route path="/customers/updateCustomer/" element={<Navigate to="/customers/customer_list" replace />} />
           <Route path="/customers/updateCustomer/:id" element={<RequireAuth><EditCustomer onBackToMain={goToMainPanel} /></RequireAuth>} />
           <Route path="/customers/customer_list" element={<RequireAuth><CustomerList onBackToMain={goToMainPanel} /></RequireAuth>} />
-          <Route path="/customers/transactions" element={<RequireAuth><Transactions onBackToMain={goToMainPanel} /></RequireAuth>} />
+          <Route path="/customers/transactions/" element={<RequireAuth><Transactions onBackToMain={goToMainPanel} /></RequireAuth>} />
           <Route path="/customers_invoices" element={<RequireAuth><CustomerInvoice onBackToMain={goToMainPanel} /></RequireAuth>} />
           <Route path="/customers/transactions/history" element={<RequireAuth><CustomerTransactionHistory onBackToMain={goToMainPanel} /></RequireAuth>} />
           <Route path="/customers/transaction-log" element={<RequireAuth><TransactionLog onBackToMain={goToMainPanel} /></RequireAuth>} />
+          <Route path="/customers/transaction-log/:customerId" element={<RequireAuth><TransactionLog onBackToMain={goToMainPanel} /></RequireAuth>} />
           <Route path="/customers/balance-transaction-log" element={<RequireAuth><BalanceTransactionLog onBackToMain={goToMainPanel} /></RequireAuth>} />
+          <Route path="/customers/balance-transaction-log/:customerId" element={<RequireAuth><BalanceTransactionLog onBackToMain={goToMainPanel} /></RequireAuth>} />
+
           <Route path="/customers/transactions/history/:id" element={<RequireAuth><CustomerTransactionHistory onBackToMain={goToMainPanel} /></RequireAuth>} />
         {/* Cheques */}
         <Route path="/cheques" element={<RequireAuth><Cheques onBackToMain={goToMainPanel} /></RequireAuth>} />

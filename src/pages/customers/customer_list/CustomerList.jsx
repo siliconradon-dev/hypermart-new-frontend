@@ -190,10 +190,11 @@ const CustomerList = () => {
     navigate(`/customers/transaction-log/${customerId}`);
   };
 
-  const handleViewBalanceTransactionsLog = (e, customerId) => {
-    e.preventDefault();
-    navigate(`/customers/balance-transaction-log/${customerId}`);
-  };
+ const handleViewBalanceTransactionsLog = (e, customerId) => {
+  e.preventDefault();
+  // Use query parameter instead of path parameter
+  navigate(`/customers/balance-transaction-log?customer_id=${customerId}`);
+};
 
   return (
     <Layout>

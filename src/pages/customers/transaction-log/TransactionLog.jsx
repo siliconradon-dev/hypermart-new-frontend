@@ -1,25 +1,56 @@
-import React from 'react';
+
+import React, { useEffect, useState } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import './TransactionLog.css';
 
+
 const TransactionLog = () => {
-  // Loading overlay state (simulate for navigation/form submit)
-  const [loading, setLoading] = React.useState(false);
+  const { customerId } = useParams();
+  const navigate = useNavigate();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [logData, setLogData] = useState(null);
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
 
-  // Simulate loading overlay for navigation or form submit
-  React.useEffect(() => {
-    const hideLoading = () => setLoading(false);
-    hideLoading();
-    document.addEventListener('visibilitychange', hideLoading);
-    return () => document.removeEventListener('visibilitychange', hideLoading);
-  }, []);
+  // Fetch log data
+  useEffect(() => {
+    if (!customerId) return;
+    setLoading(true);
+    setError(null);
+    let url = `/api/customers/${customerId}/transactions`;
+    const params = [];
+    if (dateFrom) params.push(`date_from=${dateFrom}`);
+    if (dateTo) params.push(`date_to=${dateTo}`);
+    if (params.length) url += `?${params.join('&')}`;
+    fetch(url, {
+      headers: {
+        Authorization: localStorage.getItem('token') ? `Bearer ${localStorage.getItem('token')}` : undefined,
+      },
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success) setLogData(data);
+        else setError(data.error || 'Failed to fetch log');
+        setLoading(false);
+      })
+      .catch((e) => {
+        setError('Failed to fetch log');
+        setLoading(false);
+      });
+  }, [customerId, dateFrom, dateTo]);
 
-  const showLoading = () => setLoading(true);
   const handleNav = (url) => {
-    showLoading();
+    setLoading(true);
     setTimeout(() => {
       setLoading(false);
-      window.location.href = url;
+      navigate(url);
     }, 800);
+  };
+
+  const handleFilterSubmit = (e) => {
+    e.preventDefault();
+    // Triggers useEffect
   };
 
   return (
@@ -78,6 +109,9 @@ const TransactionLog = () => {
           </div>
         </div>
       )}
+      {error && (
+        <div className="p-4 bg-red-100 text-red-700 text-center">{error}</div>
+      )}
 
       <div className="flex flex-col md:h-[90vh]">
         {/* Breadcrumbs */}
@@ -114,30 +148,43 @@ const TransactionLog = () => {
 
         {/* Filters */}
         <div className="px-4 py-4 sm:px-6 lg:px-12">
-          <form className="p-4 bg-white rounded-lg shadow">
+          <form className="p-4 bg-white rounded-lg shadow" onSubmit={handleFilterSubmit}>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
-              {/* Customer Filter */}
+              {/* Customer Filter (disabled if customerId is present) */}
               <div className="custom-select">
                 <label className="block mb-2 text-sm font-medium text-gray-700">Customer</label>
-                <select name="customer_id" className="w-full px-3 py-2 border border-gray-300 rounded-lg">
-                  <option value="">All Customers</option>
-                  <option value="7db14cc2-3519-4bc1-b281-32562caa3309">BANDULA</option>
-                  <option value="1" selected>Customer</option>
-                </select>
+                <input
+                  type="text"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100"
+                  value={logData?.customer?.name || ''}
+                  disabled
+                />
               </div>
               {/* Date From */}
               <div>
                 <label className="block mb-2 text-sm font-medium text-gray-700">From Date</label>
-                <input type="date" name="date_from" defaultValue="2026-04-01" className="w-full px-3 py-2 border border-gray-300 rounded-lg" />
+                <input
+                  type="date"
+                  name="date_from"
+                  value={dateFrom}
+                  onChange={e => setDateFrom(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                />
               </div>
               {/* Date To */}
               <div>
                 <label className="block mb-2 text-sm font-medium text-gray-700">To Date</label>
-                <input type="date" name="date_to" defaultValue="2026-04-30" className="w-full px-3 py-2 border border-gray-300 rounded-lg" />
+                <input
+                  type="date"
+                  name="date_to"
+                  value={dateTo}
+                  onChange={e => setDateTo(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                />
               </div>
               <div className="flex items-end gap-2">
                 <button type="submit" className="px-4 py-2 text-white bg-blue-600 rounded-lg hover:bg-blue-700 flex-1">Apply Filters</button>
-                <a href="/customers/transaction-log" className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 whitespace-nowrap">Clear</a>
+                <button type="button" className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 whitespace-nowrap" onClick={() => { setDateFrom(""); setDateTo(""); }}>Clear</button>
               </div>
             </div>
           </form>
@@ -148,88 +195,71 @@ const TransactionLog = () => {
           <div className="p-6 bg-white rounded-lg shadow">
             <h2 className="mb-4 text-xl font-bold text-gray-900">Logs for Customer</h2>
             {/* Summary Cards — Filtered */}
-            <p className="text-xs font-medium text-gray-500 mb-2 uppercase tracking-wide">Filtered Period: 01 Apr 2026 — 30 Apr 2026</p>
-            <div className="grid grid-cols-1 gap-4 mb-4 md:grid-cols-2 lg:grid-cols-4">
-              {/* Total Debits Card */}
-              <div className="p-4 border-l-4 border-green-500 rounded-lg shadow-sm bg-green-50">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs font-medium text-green-600 uppercase">Total Debits</p>
-                    <p className="mt-1 text-2xl font-bold text-green-700">Rs. 12,200.00</p>
-                    <p className="mt-1 text-xs text-green-600">2 transactions</p>
+            {logData && logData.summary && (
+              <>
+                <p className="text-xs font-medium text-gray-500 mb-2 uppercase tracking-wide">
+                  Filtered Period: {dateFrom || '...'} — {dateTo || '...'}
+                </p>
+                <div className="grid grid-cols-1 gap-4 mb-4 md:grid-cols-2 lg:grid-cols-4">
+                  <div className="p-4 border-l-4 border-green-500 rounded-lg shadow-sm bg-green-50">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-xs font-medium text-green-600 uppercase">Total Debits</p>
+                        <p className="mt-1 text-2xl font-bold text-green-700">Rs. {logData.summary.totalDebits?.toLocaleString(undefined, {minimumFractionDigits:2})}</p>
+                        <p className="mt-1 text-xs text-green-600">{logData.summary.debitCount} transactions</p>
+                      </div>
+                      <div className="p-3 bg-green-200 rounded-full">
+                        <svg className="w-6 h-6 text-green-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path>
+                        </svg>
+                      </div>
+                    </div>
                   </div>
-                  <div className="p-3 bg-green-200 rounded-full">
-                    <svg className="w-6 h-6 text-green-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path>
-                    </svg>
+                  <div className="p-4 border-l-4 border-red-500 rounded-lg shadow-sm bg-red-50">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-xs font-medium text-red-600 uppercase">Total Credits</p>
+                        <p className="mt-1 text-2xl font-bold text-red-700">Rs. {logData.summary.totalCredits?.toLocaleString(undefined, {minimumFractionDigits:2})}</p>
+                        <p className="mt-1 text-xs text-red-600">{logData.summary.creditCount} transactions</p>
+                      </div>
+                      <div className="p-3 bg-red-200 rounded-full">
+                        <svg className="w-6 h-6 text-red-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 10l7-7m0 0l7 7m-7-7v18"></path>
+                        </svg>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="p-4 border-l-4 border-blue-500 rounded-lg shadow-sm bg-blue-50">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-xs font-medium text-blue-600 uppercase">Net Balance</p>
+                        <p className="mt-1 text-2xl font-bold text-blue-700">{logData.summary.netBalance >= 0 ? 'Debit' : 'Credit'} Rs. {Math.abs(logData.summary.netBalance).toLocaleString(undefined, {minimumFractionDigits:2})}</p>
+                        <p className="mt-1 text-xs text-blue-600">From filtered logs</p>
+                      </div>
+                      <div className="p-3 bg-blue-200 rounded-full">
+                        <svg className="w-6 h-6 text-blue-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+                        </svg>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="p-4 border-l-4 border-gray-500 rounded-lg shadow-sm bg-gray-50">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-xs font-medium text-gray-600 uppercase">Total Logs</p>
+                        <p className="mt-1 text-2xl font-bold text-gray-700">{logData.transactions?.length}</p>
+                        <p className="mt-1 text-xs text-gray-600">In current filter</p>
+                      </div>
+                      <div className="p-3 bg-gray-200 rounded-full">
+                        <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                        </svg>
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </div>
-              {/* Total Credits Card */}
-              <div className="p-4 border-l-4 border-red-500 rounded-lg shadow-sm bg-red-50">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs font-medium text-red-600 uppercase">Total Credits</p>
-                    <p className="mt-1 text-2xl font-bold text-red-700">Rs. 12,200.00</p>
-                    <p className="mt-1 text-xs text-red-600">2 transactions</p>
-                  </div>
-                  <div className="p-3 bg-red-200 rounded-full">
-                    <svg className="w-6 h-6 text-red-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 10l7-7m0 0l7 7m-7-7v18"></path>
-                    </svg>
-                  </div>
-                </div>
-              </div>
-              {/* Net Balance Card */}
-              <div className="p-4 border-l-4 border-blue-500 rounded-lg shadow-sm bg-blue-50">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs font-medium text-blue-600 uppercase">Net Balance</p>
-                    <p className="mt-1 text-2xl font-bold text-blue-700">Debit Rs. 0.00</p>
-                    <p className="mt-1 text-xs text-blue-600">From filtered logs</p>
-                  </div>
-                  <div className="p-3 bg-blue-200 rounded-full">
-                    <svg className="w-6 h-6 text-blue-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
-                    </svg>
-                  </div>
-                </div>
-              </div>
-              {/* Total Logs Card */}
-              <div className="p-4 border-l-4 border-gray-500 rounded-lg shadow-sm bg-gray-50">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs font-medium text-gray-600 uppercase">Total Logs</p>
-                    <p className="mt-1 text-2xl font-bold text-gray-700">4</p>
-                    <p className="mt-1 text-xs text-gray-600">In current filter</p>
-                  </div>
-                  <div className="p-3 bg-gray-200 rounded-full">
-                    <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
-                    </svg>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Summary Cards — All Time (Unfiltered) */}
-            <p className="text-xs font-medium text-gray-500 mb-2 uppercase tracking-wide">All Time Totals (unfiltered)</p>
-            <div className="grid grid-cols-1 gap-4 mb-6 md:grid-cols-3">
-              <div className="p-3 border-l-4 border-green-400 rounded-lg bg-green-50">
-                <p className="text-xs font-medium text-green-600 uppercase">All-Time Debits</p>
-                <p className="mt-1 text-xl font-bold text-green-700">Rs. 14,350.00</p>
-                <p className="text-xs text-green-500">3 entries</p>
-              </div>
-              <div className="p-3 border-l-4 border-red-400 rounded-lg bg-red-50">
-                <p className="text-xs font-medium text-red-600 uppercase">All-Time Credits</p>
-                <p className="mt-1 text-xl font-bold text-red-700">Rs. 14,350.00</p>
-                <p className="text-xs text-red-500">3 entries</p>
-              </div>
-              <div className="p-3 border-l-4 border-indigo-400 rounded-lg bg-indigo-50">
-                <p className="text-xs font-medium text-indigo-600 uppercase">All-Time Net</p>
-                <p className="mt-1 text-xl font-bold text-indigo-700">Debit Rs. 0.00</p>
-              </div>
-            </div>
+              </>
+            )}
 
             <div className="overflow-x-auto">
               <table className="w-full text-sm text-left text-gray-500">
@@ -238,7 +268,6 @@ const TransactionLog = () => {
                     <th className="px-6 py-3">#</th>
                     <th className="px-6 py-3">Date</th>
                     <th className="px-6 py-3">Type</th>
-                    <th className="px-6 py-3">Customer</th>
                     <th className="px-6 py-3">Description</th>
                     <th className="px-6 py-3 text-right">Debit</th>
                     <th className="px-6 py-3 text-right">Credit</th>
@@ -246,55 +275,32 @@ const TransactionLog = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  <tr className="bg-white border-b hover:bg-gray-50">
-                    <td className="px-6 py-4 font-medium">1</td>
-                    <td className="px-6 py-4">06 Apr 2026 14:08</td>
-                    <td className="px-6 py-4 capitalize">Invoice created</td>
-                    <td className="px-6 py-4">Customer</td>
-                    <td className="px-6 py-4">Debit Bill Invoice payment. 20260410003</td>
-                    <td className="px-6 py-4 text-right text-green-600 font-medium"></td>
-                    <td className="px-6 py-4 text-right text-red-600 font-medium">Rs. 1,200.00</td>
-                    <td className="px-6 py-4">Admin</td>
-                  </tr>
-                  <tr className="bg-white border-b hover:bg-gray-50">
-                    <td className="px-6 py-4 font-medium">2</td>
-                    <td className="px-6 py-4">06 Apr 2026 14:08</td>
-                    <td className="px-6 py-4 capitalize">Invoice created</td>
-                    <td className="px-6 py-4">Customer</td>
-                    <td className="px-6 py-4">Debit Bill Invoice creation. 20260410003</td>
-                    <td className="px-6 py-4 text-right text-green-600 font-medium">Rs. 1,200.00</td>
-                    <td className="px-6 py-4 text-right text-red-600 font-medium"></td>
-                    <td className="px-6 py-4">Admin</td>
-                  </tr>
-                  <tr className="bg-white border-b hover:bg-gray-50">
-                    <td className="px-6 py-4 font-medium">3</td>
-                    <td className="px-6 py-4">01 Apr 2026 00:51</td>
-                    <td className="px-6 py-4 capitalize">Invoice created</td>
-                    <td className="px-6 py-4">Customer</td>
-                    <td className="px-6 py-4">Debit Bill Invoice payment. 20260410002</td>
-                    <td className="px-6 py-4 text-right text-green-600 font-medium"></td>
-                    <td className="px-6 py-4 text-right text-red-600 font-medium">Rs. 11,000.00</td>
-                    <td className="px-6 py-4">Admin</td>
-                  </tr>
-                  <tr className="bg-white border-b hover:bg-gray-50">
-                    <td className="px-6 py-4 font-medium">4</td>
-                    <td className="px-6 py-4">01 Apr 2026 00:51</td>
-                    <td className="px-6 py-4 capitalize">Invoice created</td>
-                    <td className="px-6 py-4">Customer</td>
-                    <td className="px-6 py-4">Debit Bill Invoice creation. 20260410002</td>
-                    <td className="px-6 py-4 text-right text-green-600 font-medium">Rs. 11,000.00</td>
-                    <td className="px-6 py-4 text-right text-red-600 font-medium"></td>
-                    <td className="px-6 py-4">Admin</td>
-                  </tr>
+                  {logData && logData.transactions && logData.transactions.length > 0 ? (
+                    logData.transactions.map((t, idx) => (
+                      <tr key={t.id || idx} className="bg-white border-b hover:bg-gray-50">
+                        <td className="px-6 py-4 font-medium">{idx + 1}</td>
+                        <td className="px-6 py-4">{t.date ? new Date(t.date).toLocaleString() : ''}</td>
+                        <td className="px-6 py-4 capitalize">{t.transactionType || t.type}</td>
+                        <td className="px-6 py-4">{t.description}</td>
+                        <td className="px-6 py-4 text-right text-green-600 font-medium">{t.type === 'debit' ? `Rs. ${Number(t.amount).toLocaleString(undefined, {minimumFractionDigits:2})}` : ''}</td>
+                        <td className="px-6 py-4 text-right text-red-600 font-medium">{t.type === 'credit' ? `Rs. ${Number(t.amount).toLocaleString(undefined, {minimumFractionDigits:2})}` : ''}</td>
+                        <td className="px-6 py-4">{t.performedBy}</td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr><td colSpan={7} className="text-center py-6">No transactions found.</td></tr>
+                  )}
                 </tbody>
-                <tfoot className="font-bold bg-gray-100">
-                  <tr>
-                    <td colSpan={5} className="px-6 py-4 text-right">Totals:</td>
-                    <td className="px-6 py-4 text-right text-green-600">Rs. 12,200.00</td>
-                    <td className="px-6 py-4 text-right text-red-600">Rs. 12,200.00</td>
-                    <td></td>
-                  </tr>
-                </tfoot>
+                {logData && logData.transactions && logData.transactions.length > 0 && (
+                  <tfoot className="font-bold bg-gray-100">
+                    <tr>
+                      <td colSpan={4} className="px-6 py-4 text-right">Totals:</td>
+                      <td className="px-6 py-4 text-right text-green-600">Rs. {logData.summary?.totalDebits?.toLocaleString(undefined, {minimumFractionDigits:2})}</td>
+                      <td className="px-6 py-4 text-right text-red-600">Rs. {logData.summary?.totalCredits?.toLocaleString(undefined, {minimumFractionDigits:2})}</td>
+                      <td></td>
+                    </tr>
+                  </tfoot>
+                )}
               </table>
             </div>
             {/* Pagination (empty for now) */}
