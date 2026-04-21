@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import './TransactionHistory.css';
 
 const TransactionHistory = () => {
@@ -20,6 +22,11 @@ const TransactionHistory = () => {
   const [dateTo, setDateTo] = useState('');
   const [transactionType, setTransactionType] = useState('');
   const [selectedCustomer, setSelectedCustomer] = useState(id || '');
+
+  // Keep state in sync with route param
+  useEffect(() => {
+    setSelectedCustomer(id || '');
+  }, [id]);
   
   // Customer dropdown state (for customer selection)
   const [customers, setCustomers] = useState([]);
@@ -32,7 +39,7 @@ const TransactionHistory = () => {
     const fetchCustomers = async () => {
       try {
         const token = localStorage.getItem('token');
-        const res = await fetch('http://localhost:3000/api/customers', {
+        const res = await fetch('/api/customers', {
           headers: {
             'Authorization': `Bearer ${token}`
           }
@@ -54,17 +61,27 @@ const TransactionHistory = () => {
   
   // Fetch transactions when customer ID or filters change
   const fetchTransactions = useCallback(async () => {
-    if (!selectedCustomer) return;
-    
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
       const params = new URLSearchParams();
       if (dateFrom) params.append('date_from', dateFrom);
       if (dateTo) params.append('date_to', dateTo);
-      if (transactionType) params.append('transaction_type', transactionType);
-      
-      const url = `http://localhost:3000/api/customers/${selectedCustomer}/transactions${params.toString() ? '?' + params.toString() : ''}`;
+      if (transactionType) {
+        // UI uses legacy HTML values; backend expects source_type values
+        const typeMap = {
+          invoice: 'customer_invoice',
+          deposit: 'customer_deposit',
+          cheque: 'cheque',
+          oil_sale: 'oil_sale'
+        };
+        params.append('transaction_type', typeMap[transactionType] || transactionType);
+      }
+
+      const url = selectedCustomer
+        ? `/api/customers/${selectedCustomer}/transactions${params.toString() ? '?' + params.toString() : ''}`
+        : `/api/customers/transactions${params.toString() ? '?' + params.toString() : ''}`;
+
       const res = await fetch(url, {
         headers: {
           'Authorization': `Bearer ${token}`
@@ -73,9 +90,15 @@ const TransactionHistory = () => {
       const data = await res.json();
       
       if (res.ok && data.success) {
-        setCustomer(data.customer);
-        setSummary(data.summary);
-        setTransactions(data.transactions);
+        if (selectedCustomer) {
+          setCustomer(data.customer);
+          setSummary(data.summary);
+          setTransactions(data.transactions || []);
+        } else {
+          setCustomer(null);
+          setSummary(data.summary || null);
+          setTransactions(data.transactions || []);
+        }
       } else {
         console.error('Error fetching transactions:', data.error);
         setTransactions([]);
@@ -90,9 +113,7 @@ const TransactionHistory = () => {
   
   // Initial fetch when component mounts or customer changes
   useEffect(() => {
-    if (selectedCustomer) {
-      fetchTransactions();
-    }
+    fetchTransactions();
   }, [selectedCustomer, fetchTransactions]);
   
   // Close dropdown on outside click
@@ -112,7 +133,7 @@ const TransactionHistory = () => {
   );
   
   // Modal logic
-  const openModal = async (type, transactionId) => {
+  const openModal = async (customerId, transactionId) => {
     setModalOpen(true);
     setModalTitle('Transaction Details');
     setModalContent(
@@ -127,7 +148,17 @@ const TransactionHistory = () => {
     
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`http://localhost:3000/api/customers/${selectedCustomer}/transaction-detail/${transactionId}`, {
+      const resolvedCustomerId = customerId || selectedCustomer;
+      if (!resolvedCustomerId) {
+        setModalContent(
+          <div className="text-center text-red-600 p-4">
+            Missing customer for this transaction
+          </div>
+        );
+        return;
+      }
+
+      const res = await fetch(`/api/customers/${resolvedCustomerId}/transaction-detail/${transactionId}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -201,6 +232,16 @@ const TransactionHistory = () => {
   };
   
   const closeModal = () => setModalOpen(false);
+
+  // Close modal on ESC key (matches legacy HTML behavior)
+  useEffect(() => {
+    if (!modalOpen) return;
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') closeModal();
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [modalOpen]);
   
   const handleFilterSubmit = (e) => {
     e.preventDefault();
@@ -213,10 +254,87 @@ const TransactionHistory = () => {
     setTransactionType('');
     fetchTransactions();
   };
+
+  const printModal = () => {
+    const contentEl = document.getElementById('transactionModalContent');
+    if (!contentEl) return;
+
+    const printWindow = window.open('', '_blank', 'width=1000,height=700');
+    if (!printWindow) return;
+
+    const safeTitle = modalTitle || 'Transaction Details';
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>${safeTitle}</title>
+          <style>
+            body { font-family: Helvetica, Arial, sans-serif; padding: 24px; }
+            h1 { font-size: 18px; margin: 0 0 12px; }
+            pre { white-space: pre-wrap; word-break: break-word; }
+          </style>
+        </head>
+        <body>
+          <h1>${safeTitle}</h1>
+          ${contentEl.innerHTML}
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+    printWindow.focus();
+    printWindow.print();
+    printWindow.close();
+  };
   
   const exportPDF = () => {
-    // Implement PDF export functionality
-    window.open(`http://localhost:3000/api/customers/${selectedCustomer}/transactions/pdf?date_from=${dateFrom}&date_to=${dateTo}`, '_blank');
+    const doc = new jsPDF({ orientation: 'landscape' });
+
+    const title = selectedCustomer
+      ? `Customer Transactions${customer?.name ? ` - ${customer.name}` : ''}`
+      : 'All Customer Transactions';
+
+    doc.setFontSize(12);
+    doc.text(title, 14, 14);
+
+    const head = [[
+      '#',
+      'Date',
+      'Type',
+      ...(!selectedCustomer ? ['Customer'] : []),
+      'Description',
+      'Debit',
+      'Credit',
+      'Reference'
+    ]];
+
+    const body = (transactions || []).map((t, index) => {
+      const typeLabel = (t.transactionType || t.sourceType || '').toString();
+      const customerLabel = t.customerName || t.customerCode || t.customerId || '';
+      const debit = t.type === 'debit' ? `Rs. ${Number(t.amount || 0).toLocaleString()}` : '';
+      const credit = t.type === 'credit' ? `Rs. ${Number(t.amount || 0).toLocaleString()}` : '';
+      const ref = t.referenceNumber || t.invoiceCode || t.chequeNumber || '';
+
+      return [
+        index + 1,
+        formatDate(t.date),
+        typeLabel.replace('_', ' '),
+        ...(!selectedCustomer ? [customerLabel] : []),
+        t.description || '',
+        debit,
+        credit,
+        ref
+      ];
+    });
+
+    autoTable(doc, {
+      head,
+      body,
+      startY: 20,
+      styles: { fontSize: 8 },
+      headStyles: { fillColor: [243, 244, 246], textColor: [55, 65, 81] }
+    });
+
+    const fileName = selectedCustomer ? 'customer-transactions.pdf' : 'all-customer-transactions.pdf';
+    doc.save(fileName);
   };
   
   // Format date for display
@@ -236,16 +354,6 @@ const TransactionHistory = () => {
     }
   };
   
-  if (!selectedCustomer) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="text-center">
-          <p className="text-gray-500">Please select a customer to view transactions</p>
-        </div>
-      </div>
-    );
-  }
-  
   return (
     <div className="transaction-history-root min-h-dvh max-lg:h-fit flex flex-col h-dvh">
       {/* Nav */}
@@ -255,10 +363,11 @@ const TransactionHistory = () => {
             <i className="text-xl text-[#000000] fas fa-arrow-left"></i>
           </button>
           <button type="button" onClick={() => navigate('/dashboard')} className="p-2 text-[#000000] rounded-lg bg-white flex gap-3 justify-center items-center hover:scale-90 transition-all">
-            <i className="text-xl text-[#000000] fas fa-city"></i>
-            Go to Main Panel
+            Dashboard
           </button>
-          <a href="/sales/billing" className="p-2 text-[#000000] rounded-lg bg-white flex gap-3 justify-center items-center hover:scale-90 transition-all">POS</a>
+          <button type="button" onClick={() => navigate('/sales/billing')} className="p-2 text-[#000000] rounded-lg bg-white flex gap-3 justify-center items-center hover:scale-90 transition-all">
+            POS
+          </button>
         </span>
         <div className="absolute left-1/2 transform -translate-x-1/2 hidden sm:block">
           <img src="https://hypermart-new.onlinesytems.com/Company Logo/1774375149_1771770442_Screenshot 2026-02-22 195640.png" alt="Logo" className="h-14 max-sm:h-8 bg-white p-1 rounded-full" />
@@ -289,25 +398,60 @@ const TransactionHistory = () => {
       
       {/* Modal */}
       {modalOpen && (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-gray-900 bg-opacity-50 flex items-center justify-center" onClick={e => { if (e.target.classList.contains('fixed')) closeModal(); }}>
-          <div className="relative w-full max-w-4xl bg-white rounded-lg shadow-xl">
-            <div className="flex items-center justify-between p-4 border-b">
-              <h3 className="text-xl font-semibold text-gray-900">{modalTitle}</h3>
-              <button onClick={closeModal} className="text-gray-400 hover:text-gray-600">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-            <div className="p-6 overflow-y-auto max-h-[70vh]">{modalContent}</div>
-            <div className="flex justify-end gap-3 p-4 border-t">
-              <button onClick={closeModal} className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200">Close</button>
+        <div
+          className="fixed inset-0 z-50 overflow-y-auto bg-gray-900 bg-opacity-50"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) closeModal();
+          }}
+        >
+          <div className="flex items-center justify-center min-h-screen px-4">
+            <div className="relative w-full max-w-4xl bg-white rounded-lg shadow-xl">
+              {/* Modal Header */}
+              <div className="flex items-center justify-between p-4 border-b">
+                <h3 className="text-xl font-semibold text-gray-900">{modalTitle}</h3>
+                <button type="button" onClick={closeModal} className="text-gray-400 hover:text-gray-600">
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              {/* Modal Body */}
+              <div className="p-6 overflow-y-auto max-h-[70vh]" id="transactionModalContent">
+                {modalContent}
+              </div>
+
+              {/* Modal Footer */}
+              <div className="flex justify-between items-center gap-3 p-4 border-t">
+                <button
+                  type="button"
+                  onClick={printModal}
+                  className="flex items-center gap-2 px-4 py-2 text-white bg-blue-600 rounded-lg hover:bg-blue-700"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"
+                    />
+                  </svg>
+                  Print
+                </button>
+                <button
+                  type="button"
+                  onClick={closeModal}
+                  className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
+                >
+                  Close
+                </button>
+              </div>
             </div>
           </div>
         </div>
       )}
       
-      <div className="flex flex-col md:h-[90vh] flex-1">
+      <div className="flex flex-col md:h-[90vh]">
         {/* Breadcrumbs */}
         <div className="w-full px-4 py-5 sm:px-6 lg:px-12">
           <nav aria-label="Breadcrumb" className="flex items-center justify-between max-md:flex-col">
@@ -334,14 +478,26 @@ const TransactionHistory = () => {
                     <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="m1 9 4-4-4-4" />
                   </svg>
                   <span className="text-sm font-medium text-gray-500 ms-1 md:ms-2">
-                    {customer ? `${customer.name} - Transactions` : 'Customer Transactions History'}
+                    {selectedCustomer
+                      ? (customer ? `${customer.name} - Transactions` : 'Customer Transactions History')
+                      : 'All Customers - Transactions'}
                   </span>
                 </div>
               </li>
             </ol>
             <div className="flex gap-3">
-              <a href="/customers/transactions" className="px-4 py-2 text-white bg-green-600 rounded-lg hover:bg-green-700">+ New Transaction</a>
-              <button onClick={exportPDF} className="px-4 py-2 text-white bg-red-600 rounded-lg hover:bg-red-700 flex items-center gap-2">
+              <button 
+                type="button"
+                onClick={() => navigate('/customers/transactions')} 
+                className="px-4 py-2 text-white bg-green-600 rounded-lg hover:bg-green-700"
+              >
+                + New Transaction
+              </button>
+              <button
+                onClick={exportPDF}
+                disabled={!selectedCustomer}
+                className="px-4 py-2 text-white bg-red-600 rounded-lg hover:bg-red-700 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
                 </svg>
@@ -351,10 +507,11 @@ const TransactionHistory = () => {
           </nav>
         </div>
         
-        {/* Customer Selector */}
+        {/* Filters */}
         <div className="px-4 py-4 sm:px-6 lg:px-12">
-          <div className="p-4 bg-white rounded-lg shadow">
+          <form className="p-4 bg-white rounded-lg shadow" onSubmit={handleFilterSubmit} autoComplete="off">
             <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+              {/* Customer Filter (matches legacy HTML placement) */}
               <div className="custom-select">
                 <label className="block mb-2 text-sm font-medium text-gray-700">Customer</label>
                 <div className="relative" ref={dropdownRef}>
@@ -363,7 +520,9 @@ const TransactionHistory = () => {
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg text-left bg-white"
                     onClick={() => setCustomerDropdownOpen((open) => !open)}
                   >
-                    {customers.find(opt => opt.value === selectedCustomer)?.label || 'Select customer'}
+                    {selectedCustomer
+                      ? (customers.find(opt => opt.value === selectedCustomer)?.label || 'Select customer')
+                      : 'All customers'}
                   </button>
                   {customerDropdownOpen && (
                     <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg">
@@ -376,6 +535,16 @@ const TransactionHistory = () => {
                         autoFocus
                       />
                       <ul className="max-h-48 overflow-y-auto">
+                        <li
+                          className={`px-3 py-2 cursor-pointer hover:bg-blue-100 ${!selectedCustomer ? 'bg-blue-50 font-semibold' : ''}`}
+                          onClick={() => {
+                            setSelectedCustomer('');
+                            setCustomerDropdownOpen(false);
+                            navigate('/customers/transactions/history');
+                          }}
+                        >
+                          All customers
+                        </li>
                         {filteredCustomers.length === 0 && (
                           <li className="px-3 py-2 text-gray-400">No results</li>
                         )}
@@ -397,14 +566,7 @@ const TransactionHistory = () => {
                   )}
                 </div>
               </div>
-            </div>
-          </div>
-        </div>
-        
-        {/* Filters */}
-        <div className="px-4 py-4 sm:px-6 lg:px-12">
-          <form className="p-4 bg-white rounded-lg shadow" onSubmit={handleFilterSubmit} autoComplete="off">
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+
               <div>
                 <label className="block mb-2 text-sm font-medium text-gray-700">Transaction Type</label>
                 <select 
@@ -413,8 +575,8 @@ const TransactionHistory = () => {
                   onChange={(e) => setTransactionType(e.target.value)}
                 >
                   <option value="">All Types</option>
-                  <option value="customer_invoice">Invoices (Credit Bills)</option>
-                  <option value="customer_deposit">Customer Deposits</option>
+                  <option value="deposit">Customer Deposits</option>
+                  <option value="invoice">Invoices (Credit Bills)</option>
                   <option value="cheque">Cheques</option>
                   <option value="oil_sale">Oil Sales</option>
                 </select>
@@ -449,7 +611,9 @@ const TransactionHistory = () => {
         <div className="flex-1 px-4 pb-6 md:overflow-auto sm:px-6 lg:px-12">
           <div className="p-6 bg-white rounded-lg shadow">
             <h2 className="mb-4 text-xl font-bold text-gray-900">
-              Transactions for {customer ? customer.name : 'Customer'}
+              {selectedCustomer
+                ? `Transactions for ${customer ? customer.name : 'Customer'}`
+                : 'Transactions for all customers'}
             </h2>
             
             {/* Summary Cards */}
@@ -509,23 +673,42 @@ const TransactionHistory = () => {
                   </div>
                 </div>
                 
-                {/* Current Balance Card */}
-                <div className="p-4 border-l-4 border-yellow-500 rounded-lg shadow-sm bg-yellow-50">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-xs font-medium text-yellow-600 uppercase">Current Balance</p>
-                      <p className="mt-1 text-2xl font-bold text-yellow-700">
-                        {customer?.currentBalance >= 0 ? 'Credit' : 'Debit'} Rs. {Math.abs(customer?.currentBalance || 0).toLocaleString()}
-                      </p>
-                      <p className="mt-1 text-xs text-yellow-600">Customer</p>
-                    </div>
-                    <div className="p-3 bg-yellow-200 rounded-full">
-                      <svg className="w-6 h-6 text-yellow-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                      </svg>
+                {/* Current Balance Card (single customer only) */}
+                {selectedCustomer ? (
+                  <div className="p-4 border-l-4 border-yellow-500 rounded-lg shadow-sm bg-yellow-50">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-xs font-medium text-yellow-600 uppercase">Current Balance</p>
+                        <p className="mt-1 text-2xl font-bold text-yellow-700">
+                          {customer?.currentBalance >= 0 ? 'Credit' : 'Debit'} Rs. {Math.abs(customer?.currentBalance || 0).toLocaleString()}
+                        </p>
+                        <p className="mt-1 text-xs text-yellow-600">Customer</p>
+                      </div>
+                      <div className="p-3 bg-yellow-200 rounded-full">
+                        <svg className="w-6 h-6 text-yellow-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                        </svg>
+                      </div>
                     </div>
                   </div>
-                </div>
+                ) : (
+                  <div className="p-4 border-l-4 border-gray-500 rounded-lg shadow-sm bg-gray-50">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-xs font-medium text-gray-600 uppercase">Total Transactions</p>
+                        <p className="mt-1 text-2xl font-bold text-gray-800">
+                          {(Number(summary.debitCount) || 0) + (Number(summary.creditCount) || 0)}
+                        </p>
+                        <p className="mt-1 text-xs text-gray-600">From filtered transactions</p>
+                      </div>
+                      <div className="p-3 bg-gray-200 rounded-full">
+                        <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 6H7a2 2 0 01-2-2V4a2 2 0 012-2h7l5 5v13a2 2 0 01-2 2z" />
+                        </svg>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
             
@@ -561,21 +744,22 @@ const TransactionHistory = () => {
               <table className="w-full text-sm text-left text-gray-500">
                 <thead className="text-xs text-gray-700 uppercase bg-gray-50">
                   <tr>
-                    <th className="px-6 py-4 font-medium">#</th>
-                    <th className="px-6 py-4">Date</th>
-                    <th className="px-6 py-4">Type</th>
-                    <th className="px-6 py-4">Description</th>
-                    <th className="px-6 py-4 text-right">Debit</th>
-                    <th className="px-6 py-4 text-right">Credit</th>
-                    <th className="px-6 py-4">Ref</th>
-                    <th className="px-6 py-4">Actions</th>
+                    <th className="px-6 py-3">#</th>
+                    <th className="px-6 py-3">Date</th>
+                    <th className="px-6 py-3">Type</th>
+                    {!selectedCustomer && <th className="px-6 py-3">Customer</th>}
+                    <th className="px-6 py-3">Description</th>
+                    <th className="px-6 py-3 text-right">Debit</th>
+                    <th className="px-6 py-3 text-right">Credit</th>
+                    <th className="px-6 py-3">Reference</th>
+                    <th className="px-6 py-3">Action</th>
                   </tr>
                 </thead>
                 <tbody>
                   {transactions.length === 0 ? (
                     <tr>
-                      <td colSpan="8" className="px-6 py-8 text-center text-gray-500">
-                        No transactions found for this customer
+                      <td colSpan={selectedCustomer ? 8 : 9} className="px-6 py-8 text-center text-gray-500">
+                        {selectedCustomer ? 'No transactions found for this customer' : 'No transactions found'}
                       </td>
                     </tr>
                   ) : (
@@ -588,6 +772,11 @@ const TransactionHistory = () => {
                             {transaction.transactionType?.replace('_', ' ') || transaction.sourceType}
                           </span>
                         </td>
+                        {!selectedCustomer && (
+                          <td className="px-6 py-4">
+                            {transaction.customerName || transaction.customerCode || transaction.customerId || '-'}
+                          </td>
+                        )}
                         <td className="px-6 py-4 max-w-xs truncate">
                           {transaction.description || 'N/A'}
                         </td>
@@ -604,7 +793,7 @@ const TransactionHistory = () => {
                           <button 
                             type="button" 
                             className="px-3 py-1 text-xs text-white bg-blue-600 rounded hover:bg-blue-700"
-                            onClick={() => openModal(transaction.sourceType, transaction.id)}
+                            onClick={() => openModal(transaction.customerId, transaction.id)}
                           >
                             View Details
                           </button>
@@ -613,7 +802,7 @@ const TransactionHistory = () => {
                     ))
                   )}
                 </tbody>
-                {transactions.length > 0 && (
+                {transactions.length > 0 && summary && selectedCustomer && (
                   <tfoot className="font-bold bg-gray-100">
                     <tr>
                       <td className="px-6 py-4 text-right" colSpan={4}>Totals:</td>
