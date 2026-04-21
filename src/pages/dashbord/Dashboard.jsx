@@ -1,62 +1,44 @@
+
 import { Fragment, useEffect, useRef, useState } from 'react';
 import Layout from '../../components/Layout';
 import './Dashboard.css';
-
-const stockRows = [];
-
-const monthlySalesData = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+import { fetchDashboardData } from './dashboardApi';
 
 const amountCards = [
-  {
-    label: 'Total Sales Amount',
-    icon: '/images/dash/sa.png',
-  },
-  {
-    label: 'Total Sales Due',
-    icon: '/images/dash/sd.png',
-  },
-  {
-    label: 'Total Expenses Amount',
-    icon: '/images/dash/ea.png',
-  },
-  {
-    label: 'Total Payment Received (Sales)',
-    icon: '/images/dash/sd.png',
-  },
-  {
-    label: 'Today Total Sales',
-    icon: '/images/dash/sa.png',
-  },
-  {
-    label: 'Today Total Expenses',
-    icon: '/images/dash/ea.png',
-  },
+  { label: 'Total Sales Amount', icon: '/images/dash/sa.png', key: 'total_sales' },
+  { label: 'Total Sales Due', icon: '/images/dash/sd.png', key: 'total_due' },
+  { label: 'Total Expenses Amount', icon: '/images/dash/ea.png', key: 'total_expenses' },
+  { label: 'Total Payment Received (Sales)', icon: '/images/dash/sd.png', key: 'total_received' },
+  { label: 'Today Total Sales', icon: '/images/dash/sa.png', key: 'today_sales' },
+  { label: 'Today Total Expenses', icon: '/images/dash/ea.png', key: 'today_expenses' },
+];
+const summaryCards = [
+  { label: 'Customers', icon: '/images/dash/customer.png', key: 'customers' },
+  { label: 'Suppliers', icon: '/images/dash/supplier.png', key: 'suppliers' },
+  { label: 'Items', icon: '/images/dash/purchases.png', key: 'items' },
+  { label: 'Sales Invoice', icon: '/images/dash/invoice.png', key: 'sales_invoices' },
 ];
 
-const summaryCards = [
-  {
-    label: 'Customers',
-    icon: '/images/dash/customer.png',
-  },
-  {
-    label: 'Suppliers',
-    icon: '/images/dash/supplier.png',
-  },
-  {
-    label: 'Items',
-    icon: '/images/dash/purchases.png',
-  },
-  {
-    label: 'Sales Invoice',
-    icon: '/images/dash/invoice.png',
-  },
-];
 
 function DashbordDashboard({ onBackToMain }) {
   const [activeView, setActiveView] = useState('expiry');
+  const [amounts, setAmounts] = useState({});
+  const [summary, setSummary] = useState({});
+  const [monthlySales, setMonthlySales] = useState(Array(12).fill(0));
+  const [stockRows, setStockRows] = useState([]);
+  const [expiryRows, setExpiryRows] = useState([]);
   const chartContainerRef = useRef(null);
   const chartRef = useRef(null);
   const hideBrokenImage = (e) => { e.currentTarget.style.display = 'none'; };
+
+  // Fetch dashboard data
+  useEffect(() => {
+    fetchDashboardData('amounts').then(setAmounts).catch(() => {});
+    fetchDashboardData('summary').then(setSummary).catch(() => {});
+    fetchDashboardData('monthly-sales').then((d) => setMonthlySales(d.monthlySales || Array(12).fill(0))).catch(() => {});
+    fetchDashboardData('stock-alert').then((d) => setStockRows(d.stockAlert || [])).catch(() => {});
+    fetchDashboardData('expiry-alert').then((d) => setExpiryRows(d.expiryAlert || [])).catch(() => {});
+  }, []);
 
   let user = null;
   try {
@@ -76,7 +58,7 @@ function DashbordDashboard({ onBackToMain }) {
     const options = {
       xaxis: { show: true, categories: ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'], labels: { show: true, style: { fontFamily: 'Inter, sans-serif', cssClass: 'text-xs font-normal fill-gray-500' } }, axisBorder: { show: false }, axisTicks: { show: false } },
       yaxis: { show: true, labels: { show: true, style: { fontFamily: 'Inter, sans-serif', cssClass: 'text-xs font-normal fill-gray-500' }, formatter(value) { return `Rs.${value.toFixed(2)}`; } } },
-      series: [{ name: 'Sales', data: monthlySalesData, color: '#1A56DB' }],
+      series: [{ name: 'Sales', data: monthlySales, color: '#1A56DB' }],
       chart: { sparkline: { enabled: false }, height: '100%', width: '100%', type: 'area', fontFamily: 'Inter, sans-serif', dropShadow: { enabled: false }, toolbar: { show: false } },
       tooltip: { enabled: true, x: { show: false } },
       fill: { type: 'gradient', gradient: { opacityFrom: 0.55, opacityTo: 0, shade: '#1C64F2', gradientToColors: ['#1C64F2'] } },
@@ -88,7 +70,7 @@ function DashbordDashboard({ onBackToMain }) {
     chartRef.current = new window.ApexCharts(chartContainerRef.current, options);
     chartRef.current.render();
     return () => { if (chartRef.current) { chartRef.current.destroy(); chartRef.current = null; } };
-  }, [activeView]);
+  }, [activeView, monthlySales]);
   if (isDeactivated) {
     return (
       <Layout
@@ -135,7 +117,7 @@ function DashbordDashboard({ onBackToMain }) {
             </div>
             <div className="flex flex-col items-center justify-center w-2/3">
               <p className="w-full pl-2 text-xs">{card.label}</p>
-              <h3 className="w-full pl-2 text-xl max-lg:text-lg">Rs. 0.00</h3>
+              <h3 className="w-full pl-2 text-xl max-lg:text-lg">Rs. {Number(amounts[card.key] || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</h3>
             </div>
           </div>
         ))}
@@ -149,7 +131,7 @@ function DashbordDashboard({ onBackToMain }) {
                   <img src={card.icon} alt="" onError={hideBrokenImage} className="w-1/2" />
                   <span className="flex flex-col w-1/2 h-full justify-evenly">
                     <p className="text-center">{card.label}</p>
-                    <h3 className="text-2xl font-bold text-center">0</h3>
+                    <h3 className="text-2xl font-bold text-center">{Number(summary[card.key] || 0).toLocaleString()}</h3>
                   </span>
                 </div>
               </div>
@@ -215,7 +197,14 @@ function DashbordDashboard({ onBackToMain }) {
                           No stock data available
                         </td>
                       </tr>
-                    ) : null}
+                    ) : stockRows.map((row, idx) => (
+                      <tr key={row.item_name + idx}>
+                        <td className="px-6 py-3">{idx + 1}</td>
+                        <td className="px-6 py-3">{row.item_name}</td>
+                        <td className="px-6 py-3">{row.quantity}</td>
+                        <td className="px-6 py-3">{row.minimum_qty}</td>
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
               </div>
@@ -226,17 +215,40 @@ function DashbordDashboard({ onBackToMain }) {
               <div className="flex items-center justify-between p-4 mb-4">
                 <h2 className="text-xl font-semibold text-gray-800">Items Expiring Soon</h2>
                 <span className="px-3 py-1 text-sm font-medium text-white bg-green-500 rounded-full">
-                  No items expiring soon
+                  {expiryRows.length === 0 ? 'No items expiring soon' : `${expiryRows.length} item(s) expiring soon`}
                 </span>
               </div>
-              <div className="flex items-center justify-center h-32">
-                <div className="text-center">
-                  <svg className="w-12 h-12 mx-auto mb-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  <p className="text-gray-500">All items are within safe expiry dates!</p>
+              {expiryRows.length === 0 ? (
+                <div className="flex items-center justify-center h-32">
+                  <div className="text-center">
+                    <svg className="w-12 h-12 mx-auto mb-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <p className="text-gray-500">All items are within safe expiry dates!</p>
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm text-left text-gray-500 rtl:text-right">
+                    <thead className="text-xs text-white uppercase bg-[#3c8c2c]">
+                      <tr>
+                        <th className="px-6 py-3 rounded-tl-lg">#</th>
+                        <th className="px-6 py-3">Item Name</th>
+                        <th className="px-6 py-3 rounded-tr-lg">Expiry Date</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {expiryRows.map((row, idx) => (
+                        <tr key={row.item_name + idx}>
+                          <td className="px-6 py-3">{idx + 1}</td>
+                          <td className="px-6 py-3">{row.item_name}</td>
+                          <td className="px-6 py-3">{row.exp_date}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           ) : null}
         </div>
