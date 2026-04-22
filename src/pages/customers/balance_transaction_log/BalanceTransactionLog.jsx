@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import './BalanceTransactionLog.css';
+import '../../../components/Layout'
+import Layout from '../../../components/Layout';
 
 const BalanceTransactionLog = () => {
   const [loading, setLoading] = useState(false);
@@ -144,52 +146,11 @@ const BalanceTransactionLog = () => {
   };
 
   return (
+    <Layout>
+
     <div className="min-h-dvh max-lg:h-fit flex flex-col h-dvh">
       {/* Nav */}
-      <div className="nav bg-[#3c8c2c] w-full h-[10%] max-lg:h-[17dvh] py-6 flex justify-between items-center max-md:justify-center max-md:flex-col md:px-14 lg:px-0">
-        <span className="flex items-center gap-3 ml-20 max-lg:ml-0 max-sm:scale-75">
-          <button
-            type="button"
-            onClick={() => window.history.back()}
-            className="rounded-full w-[50px] aspect-square bg-white flex justify-center items-center hover:scale-90 transition-all"
-          >
-            <i className="text-xl text-[#000000] fas fa-arrow-left"></i>
-          </button>
-          <button
-            type="button"
-            onClick={() => handleNav('/dashboard')}
-            className="p-2 text-[#000000] rounded-lg bg-white flex gap-3 justify-center items-center hover:scale-90 transition-all"
-          >
-            <i className="text-xl text-[#000000] fas fa-city"></i>
-            Go to Main Panel
-          </button>
-          <a
-            href="/sales/billing"
-            className="p-2 text-[#000000] rounded-lg bg-white flex gap-3 justify-center items-center hover:scale-90 transition-all"
-          >
-            POS
-          </a>
-        </span>
-        <div className="absolute left-1/2 transform -translate-x-1/2 hidden sm:block">
-          <img
-            src="https://hypermart-new.onlinesytems.com/Company Logo/1774375149_1771770442_Screenshot 2026-02-22 195640.png"
-            alt="Logo"
-            className="h-14 max-sm:h-8 bg-white p-1 rounded-full"
-          />
-        </div>
-        <span className="flex items-center gap-3 mr-20 max-lg:mr-0 max-sm:scale-75">
-          <div className="flex flex-col items-end text-right">
-            <h3 className="text-2xl max-md:text-sm text-[#ffffff]">Good Afternoon!</h3>
-            <h3 className="text-sm text-[#ffffff]">Welcome HYPERMART</h3>
-          </div>
-          <form method="POST" action="https://hypermart-new.onlinesytems.com/logout">
-            <input type="hidden" name="_token" value="w60AGsOgpzTar61Q5IStjmzQHtGFA4bgGu0ewCzn" autoComplete="off" />
-            <button type="submit" className="rounded-full w-[50px] aspect-square bg-white flex justify-center items-center hover:scale-90 transition-all">
-              <i className="text-xl font-bold text-[#000000] fas fa-sign-out-alt"></i>
-            </button>
-          </form>
-        </span>
-      </div>
+      
 
       {/* Loading Overlay */}
       {loading && (
@@ -452,10 +413,9 @@ const BalanceTransactionLog = () => {
         </div>
       </div>
 
-      <footer className="bg-[#3c8c2c] py-4 text-center text-[#ffffff]">
-        <p>2026 © All Rights Reserved | Hypermart | Designed and Developed by Silicon Radon Networks (Pvt) Ltd</p>
-      </footer>
+      
     </div>
+    </Layout>
   );
 };
 

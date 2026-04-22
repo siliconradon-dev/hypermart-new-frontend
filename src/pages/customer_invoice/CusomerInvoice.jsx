@@ -25,7 +25,7 @@ const CustomerInvoice = () => {
 					{/* Left: Logo + Company Info */}
 					<div className="flex items-start space-x-3">
 						<div className="w-12 h-12 flex-shrink-0">
-							<img src="https://hypermart-new.onlinesytems.com/Company Logo/1774375100_1771770442_Screenshot 2026-02-22 195640.png" alt="Logo" className="w-full h-full object-contain" />
+							<img src="\images\logo.png" alt="Logo" className="w-full h-full object-contain" />
 						</div>
 						<div>
 							<h1 className="text-base font-bold text-gray-900">Hypermart</h1>
